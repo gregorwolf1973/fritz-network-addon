@@ -62,85 +62,76 @@ def _fetch_mesh_json(fc) -> dict | None:
         return None
 
 
+def _kbits_to_mbit(val) -> int | None:
+    """Convert kbit/s (as returned by mesh JSON) to Mbit/s."""
+    if val is None:
+        return None
+    v = int(val)
+    return round(v / 1000) if v > 0 else None
+
+
 def _build_mesh_links(mesh_json: dict | None, mac_to_id: dict) -> tuple[list, bool]:
     """
-    Parse mesh topology JSON and return (mesh_links, has_mesh).
+    Parse AVM mesh topology JSON and return (mesh_links, has_mesh).
 
-    mesh_links: list of dicts with source/target (graph node IDs),
-                link_type, speed_rx, speed_tx
-    has_mesh:   True when real topology links were produced
+    The mesh JSON stores each link under node_interfaces[].node_links[] with:
+      node_1_uid  → parent mesh-node uid  (e.g. "n-1")
+      node_2_uid  → child  mesh-node uid  (e.g. "n-75")
+    Speeds are in kbit/s → converted to Mbit/s.
     """
     if not mesh_json:
         return [], False
 
     nodes_raw = mesh_json.get("nodes", [])
 
-    # ── Step 1: build interface_uid → {node_uid, mac} map ─────────────────
-    iface_map: dict[str, dict] = {}   # iface_uid → {node_uid, mac}
-
-    for node in nodes_raw:
-        nuid = node.get("uid", "")
-        for iface in node.get("node_interfaces", []):
-            iuid = iface.get("uid", "")
-            mac  = _norm_mac(iface.get("mac_address", ""))
-            if iuid:
-                iface_map[iuid] = {"node_uid": nuid, "mac": mac}
-
-    # ── Step 2: map mesh node_uid → graph node_id ─────────────────────────
+    # ── Step 1: map mesh node_uid → graph node_id via device_mac_address ──
     nuid_to_gid: dict[str, str] = {}
 
     for node in nodes_raw:
         nuid = node.get("uid", "")
         role = node.get("mesh_role", "")
+        mac  = _norm_mac(node.get("device_mac_address", ""))
 
         if role == "master":
             nuid_to_gid[nuid] = "fritzbox_root"
-            continue
+        elif mac and mac in mac_to_id:
+            nuid_to_gid[nuid] = mac_to_id[mac]
+        # slaves not yet in hosts list are handled in _fetch_fresh()
 
-        # Match via any interface MAC
-        for iface in node.get("node_interfaces", []):
-            mac = _norm_mac(iface.get("mac_address", ""))
-            if mac and mac in mac_to_id:
-                nuid_to_gid[nuid] = mac_to_id[mac]
-                break
-
-    # ── Step 3: iterate node_links and produce graph links ────────────────
-    links: list[dict] = []
-    seen:  set[tuple] = set()
-    has_mesh = False
+    # ── Step 2: collect all unique links (dedupe by link uid "nl-*") ──────
+    seen_link_uids: set[str] = set()
+    raw_links: list[dict]    = []
 
     for node in nodes_raw:
-        src_nuid = node.get("uid", "")
-        src_gid  = nuid_to_gid.get(src_nuid)
-
         for iface in node.get("node_interfaces", []):
             for lnk in iface.get("node_links", []):
-                if lnk.get("state", "CONNECTED") != "CONNECTED":
-                    continue
+                luid = lnk.get("uid", "")
+                if luid and luid not in seen_link_uids:
+                    seen_link_uids.add(luid)
+                    raw_links.append(lnk)
 
-                tgt_iuid = lnk.get("node_interface_uid", "")
-                tgt_info = iface_map.get(tgt_iuid, {})
-                tgt_gid  = nuid_to_gid.get(tgt_info.get("node_uid", ""))
+    # ── Step 3: build graph links from node_1_uid / node_2_uid ────────────
+    links:    list[dict] = []
+    has_mesh: bool       = False
 
-                if not src_gid or not tgt_gid or src_gid == tgt_gid:
-                    continue
+    for lnk in raw_links:
+        if lnk.get("state") != "CONNECTED":
+            continue
 
-                key = tuple(sorted([src_gid, tgt_gid]))
-                if key in seen:
-                    continue
-                seen.add(key)
-                has_mesh = True
+        src_gid = nuid_to_gid.get(lnk.get("node_1_uid", ""))  # parent
+        tgt_gid = nuid_to_gid.get(lnk.get("node_2_uid", ""))  # child
 
-                speed_rx = lnk.get("cur_data_rate_rx") or lnk.get("max_data_rate_rx")
-                speed_tx = lnk.get("cur_data_rate_tx") or lnk.get("max_data_rate_tx")
+        if not src_gid or not tgt_gid or src_gid == tgt_gid:
+            continue
 
-                links.append({
-                    "source":    src_gid,
-                    "target":    tgt_gid,
-                    "link_type": lnk.get("type", "LAN"),
-                    "speed_rx":  speed_rx,
-                    "speed_tx":  speed_tx,
-                })
+        has_mesh = True
+        links.append({
+            "source":    src_gid,
+            "target":    tgt_gid,
+            "link_type": lnk.get("type", "LAN"),
+            "speed_rx":  _kbits_to_mbit(lnk.get("cur_data_rate_rx") or lnk.get("max_data_rate_rx")),
+            "speed_tx":  _kbits_to_mbit(lnk.get("cur_data_rate_tx") or lnk.get("max_data_rate_tx")),
+        })
 
     return links, has_mesh
 
@@ -216,25 +207,50 @@ def _fetch_fresh() -> dict:
         for n in nodes[1:]
     ]
 
-    # ── Mesh topology links ────────────────────────────────────────────────
-    mesh_json               = _fetch_mesh_json(fc)
-    mesh_links, has_mesh    = _build_mesh_links(mesh_json, mac_to_id)
+    # ── Mesh topology ──────────────────────────────────────────────────────
+    mesh_json = _fetch_mesh_json(fc)
 
-    # Nodes that appear in mesh → update their type from mesh_role
     if mesh_json:
         for mnode in mesh_json.get("nodes", []):
             role = mnode.get("mesh_role", "")
-            if role not in ("master", "slave"):
-                continue
-            for iface in mnode.get("node_interfaces", []):
-                mac = _norm_mac(iface.get("mac_address", ""))
+            mac  = _norm_mac(mnode.get("device_mac_address", ""))
+
+            if role == "master":
+                continue  # already handled as fritzbox_root
+
+            if role == "slave":
+                # Update existing host node OR create new repeater node
                 gid = mac_to_id.get(mac)
                 if gid:
                     for gn in nodes:
                         if gn["id"] == gid:
-                            gn["type"]      = _device_type(gn["name"], gn["interface"], role)
-                            gn["mesh_role"] = role
+                            gn["type"]      = "repeater"
+                            gn["mesh_role"] = "slave"
                             break
+                else:
+                    # Repeater not in hosts list → add as new node
+                    ip = ""
+                    for ip_e in mnode.get("ip_addresses", []):
+                        if ip_e.get("version") == "V4" and "MANAGEMENT" in ip_e.get("attributes", []):
+                            ip = ip_e.get("value", "").split("/")[0]
+                            break
+                    name    = mnode.get("device_friendly_name") or mnode.get("device_name") or "Repeater"
+                    node_id = "m_" + mac.replace(":", "") if mac else f"m_{mnode.get('uid','x')}"
+                    nodes.append({
+                        "id": node_id, "name": name, "ip": ip, "mac": mac,
+                        "type": "repeater", "active": True,
+                        "interface": "LAN", "speed": None, "address_source": "",
+                        "mesh_role": "slave",
+                    })
+                    if mac:
+                        mac_to_id[mac] = node_id
+                    # Also add flat link for star view
+                    flat_links.append({
+                        "source": "fritzbox_root", "target": node_id,
+                        "link_type": "flat", "speed_rx": None, "speed_tx": None,
+                    })
+
+    mesh_links, has_mesh = _build_mesh_links(mesh_json, mac_to_id)
 
     return {
         "nodes":      nodes,
