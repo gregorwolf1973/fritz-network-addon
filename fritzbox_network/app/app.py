@@ -5,7 +5,9 @@ import time
 import json
 import logging
 import urllib.request
+import urllib.parse
 import xml.etree.ElementTree as ET
+from collections import deque, defaultdict
 from flask import Flask, jsonify, render_template, request
 
 logging.basicConfig(level=logging.INFO)
@@ -156,7 +158,34 @@ def _build_mesh_links(mesh_json: dict | None, mac_to_id: dict) -> tuple[list, bo
                     seen_link_uids.add(luid)
                     raw_links.append(lnk)
 
-    # ── Step 3: build graph links from node_1_uid / node_2_uid ────────────
+    # ── Step 3: BFS from master to determine real parent→child depth ─────
+    # node_1_uid is NOT always the topological parent in AVM mesh JSON.
+    # We do a breadth-first search from the master node to compute depth,
+    # then orient each link so the shallower (closer-to-master) node is
+    # the source (parent) and the deeper node is the target (child).
+    adj: dict[str, set] = defaultdict(set)
+    for lnk in raw_links:
+        if lnk.get("state") == "CONNECTED":
+            u, v = lnk.get("node_1_uid", ""), lnk.get("node_2_uid", "")
+            if u and v:
+                adj[u].add(v)
+                adj[v].add(u)
+
+    master_uid = next(
+        (n.get("uid", "") for n in nodes_raw if n.get("mesh_role") == "master"), ""
+    )
+    depth: dict[str, int] = {}
+    if master_uid:
+        q: deque = deque([master_uid])
+        depth[master_uid] = 0
+        while q:
+            cur = q.popleft()
+            for nb in adj[cur]:
+                if nb not in depth:
+                    depth[nb] = depth[cur] + 1
+                    q.append(nb)
+
+    # ── Step 4: build graph links with correct parent→child orientation ───
     links:    list[dict] = []
     has_mesh: bool       = False
 
@@ -164,11 +193,19 @@ def _build_mesh_links(mesh_json: dict | None, mac_to_id: dict) -> tuple[list, bo
         if lnk.get("state") != "CONNECTED":
             continue
 
-        src_gid = nuid_to_gid.get(lnk.get("node_1_uid", ""))  # parent
-        tgt_gid = nuid_to_gid.get(lnk.get("node_2_uid", ""))  # child
+        u1, u2 = lnk.get("node_1_uid", ""), lnk.get("node_2_uid", "")
+        gid1   = nuid_to_gid.get(u1)
+        gid2   = nuid_to_gid.get(u2)
 
-        if not src_gid or not tgt_gid or src_gid == tgt_gid:
+        if not gid1 or not gid2 or gid1 == gid2:
             continue
+
+        # Orient: shallower node (lower depth) = parent (source)
+        d1, d2 = depth.get(u1, 99), depth.get(u2, 99)
+        if d1 <= d2:
+            src_gid, tgt_gid = gid1, gid2
+        else:
+            src_gid, tgt_gid = gid2, gid1
 
         has_mesh = True
         links.append({
@@ -437,6 +474,27 @@ def api_network():
 @app.route("/api/refresh", methods=["GET", "POST"])
 def api_refresh():
     return jsonify(get_network_data(force=True))
+
+
+@app.route("/api/vendor")
+def api_vendor():
+    """
+    Server-side proxy for MAC vendor lookup.
+    Needed because HA Ingress CSP blocks direct browser requests to
+    external APIs. Flask fetches from api.macvendors.com on behalf of
+    the client and returns { vendor: "..." }.
+    """
+    mac = request.args.get("mac", "").strip()
+    if not mac:
+        return jsonify({"vendor": ""})
+    try:
+        url = f"https://api.macvendors.com/{urllib.parse.quote(mac)}"
+        req = urllib.request.Request(url, headers={"Accept": "text/plain"})
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            vendor = resp.read().decode().strip()
+        return jsonify({"vendor": vendor})
+    except Exception:
+        return jsonify({"vendor": ""})
 
 
 @app.route("/api/status")

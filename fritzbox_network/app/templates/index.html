@@ -1096,15 +1096,13 @@ function openModal(d) {
       <span class="detail-val">${r.raw ? r.v : esc(r.v)}</span>
     </div>`).join('');
 
-  // Async vendor lookup
+  // Async vendor lookup via server-side proxy (avoids HA Ingress CSP)
   if (d.mac) {
-    const oui = d.mac.replace(/:/g,'').substring(0,6).toUpperCase();
-    fetch(`https://api.macvendors.com/${encodeURIComponent(d.mac)}`)
-      .then(r => r.ok ? r.text() : Promise.reject())
-      .then(v => {
+    fetch(`./api/vendor?mac=${encodeURIComponent(d.mac)}`)
+      .then(r => r.json())
+      .then(j => {
         const el = document.getElementById('m-vendor');
-        if (el) el.textContent = v.trim() || '—';
-        if (el) el.style.color = '';
+        if (el) { el.textContent = j.vendor || '—'; el.style.color = ''; }
       })
       .catch(() => {
         const el = document.getElementById('m-vendor');
