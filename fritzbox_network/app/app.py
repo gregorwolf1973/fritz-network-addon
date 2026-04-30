@@ -6,7 +6,7 @@ import json
 import logging
 import urllib.request
 import xml.etree.ElementTree as ET
-from flask import Flask, jsonify, render_template
+from flask import Flask, jsonify, render_template, request
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("fritznet")
@@ -412,10 +412,11 @@ def index():
 
 @app.route("/api/network")
 def api_network():
-    return jsonify(get_network_data())
+    force = request.args.get("force", "").lower() in ("1", "true", "yes")
+    return jsonify(get_network_data(force=force))
 
 
-@app.route("/api/refresh", methods=["POST"])
+@app.route("/api/refresh", methods=["GET", "POST"])
 def api_refresh():
     return jsonify(get_network_data(force=True))
 

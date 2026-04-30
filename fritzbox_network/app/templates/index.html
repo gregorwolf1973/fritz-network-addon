@@ -533,8 +533,9 @@ a.dlink:hover { text-decoration: underline; }
       Layout zurücksetzen
     </button>
     <p style="font-size:10px;color:var(--text-dim);margin-top:8px;line-height:1.4">
-      Positionen werden beim Ziehen automatisch gespeichert.<br>
-      Doppelklick auf einen Knoten löst die Pinnadel.
+      <b>Speichern:</b> friert <i>alle</i> aktuellen Positionen ein – sinnvoll, sobald die Simulation sich beruhigt hat.<br>
+      <b>Ziehen:</b> einzelne Positionen werden automatisch gespeichert.<br>
+      <b>Doppelklick:</b> löst die Pinnadel eines Knotens.
     </p>
   </div>
 
@@ -593,11 +594,30 @@ let simulation = null;
 let gLinks, gNodes;          // D3 selections, kept for tick updates
 let curNodes, curLinks;      // current working copies
 
-let topoMode = 'flat';       // 'flat' | 'mesh'
-let dirMode  = 'force';      // 'force' | 'tree'
-let showNames= true;
-let showIPs  = false;
-let showInact= true;
+/* ──────────────────────────────────────────────────────────────────
+   Settings persistence  (localStorage key: fnw-settings-v1)
+   ────────────────────────────────────────────────────────────────── */
+const SETTINGS_KEY = 'fnw-settings-v1';
+const DEFAULT_SETTINGS = {
+  topoMode:  'flat',   // 'flat' | 'mesh'
+  dirMode:   'force',  // 'force' | 'tree'
+  showNames: true,
+  showIPs:   false,
+  showInact: true,
+};
+function loadSettings() {
+  try {
+    const s = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}');
+    return { ...DEFAULT_SETTINGS, ...s };
+  } catch { return { ...DEFAULT_SETTINGS }; }
+}
+function saveSettings() {
+  localStorage.setItem(SETTINGS_KEY, JSON.stringify({
+    topoMode, dirMode, showNames, showIPs, showInact,
+  }));
+}
+
+let { topoMode, dirMode, showNames, showIPs, showInact } = loadSettings();
 
 /* ──────────────────────────────────────────────────────────────────
    Theme  (persisted via localStorage)
@@ -617,6 +637,25 @@ function toggleTheme() {
   if (saved) document.body.setAttribute('data-theme', saved);
 })();
 
+/* Apply saved settings to UI controls (buttons + checkboxes) on first load */
+function applySettingsToUI() {
+  document.querySelectorAll('[data-topo]').forEach(b =>
+    b.classList.toggle('active', b.dataset.topo === topoMode));
+  document.querySelectorAll('[data-dir]').forEach(b =>
+    b.classList.toggle('active', b.dataset.dir === dirMode));
+
+  const setToggle = (id, on) => {
+    const el  = document.getElementById(id);
+    if (!el) return;
+    const cb = el.querySelector('input');
+    el.classList.toggle('on', on);
+    if (cb) cb.checked = on;
+  };
+  setToggle('tog-names',    showNames);
+  setToggle('tog-ips',      showIPs);
+  setToggle('tog-inactive', showInact);
+}
+
 /* ──────────────────────────────────────────────────────────────────
    Segmented controls
    ────────────────────────────────────────────────────────────────── */
@@ -624,6 +663,7 @@ function setTopo(mode) {
   topoMode = mode;
   document.querySelectorAll('[data-topo]').forEach(b =>
     b.classList.toggle('active', b.dataset.topo === mode));
+  saveSettings();
   if (graphData) renderGraph(graphData);
 }
 
@@ -631,6 +671,7 @@ function setDir(mode) {
   dirMode = mode;
   document.querySelectorAll('[data-dir]').forEach(b =>
     b.classList.toggle('active', b.dataset.dir === mode));
+  saveSettings();
   if (graphData) renderGraph(graphData);
 }
 
@@ -642,6 +683,7 @@ function onToggle(key, el) {
   if (key === 'names')   { showNames = el.checked; d3.selectAll('.lbl-name').attr('display', showNames ? null : 'none'); }
   if (key === 'ips')     { showIPs   = el.checked; d3.selectAll('.lbl-ip').attr('display',   showIPs   ? null : 'none'); }
   if (key === 'inactive'){ showInact = el.checked; if (graphData) renderGraph(graphData); }
+  saveSettings();
 }
 
 /* ──────────────────────────────────────────────────────────────────
@@ -670,7 +712,7 @@ async function doRefresh() {
   btn.disabled = true;
   btn.innerHTML = `<span class="spin spinner-sm"></span> Lädt…`;
   try {
-    const r = await fetch('./api/refresh', { method:'POST' });
+    const r = await fetch('./api/network?force=1');
     const d = await r.json();
     if (d.error) throw new Error(d.error);
     graphData = d;
@@ -1148,6 +1190,7 @@ function resetLayout() {
 }
 
 /* ── Init ── */
+applySettingsToUI();   // restore button + toggle states from localStorage
 loadNetwork();
 </script>
 </body>
