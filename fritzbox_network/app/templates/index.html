@@ -28,18 +28,14 @@
   --nav-bg: #ffffff;
   --input-bg: #f5f6fa;
   --overlay: rgba(0,0,0,.4);
-  --pill-ok-bg: #e6f7ef;
-  --pill-ok-text: #0f9d58;
-  --pill-off-bg: #fde7e6;
-  --pill-off-text: #db4437;
-
-  /* Network colors */
-  --col-router: #e53935;
-  --col-lan:    #1e88e5;
-  --col-wlan:   #fb8c00;
-  --col-switch: #1e88e5;
-
-  --sidebar-w: 236px;
+  --pill-ok-bg: #e6f7ef;   --pill-ok-text: #0f9d58;
+  --pill-off-bg: #fde7e6;  --pill-off-text: #db4437;
+  --col-router:   #e53935;
+  --col-lan:      #1e88e5;
+  --col-wlan:     #fb8c00;
+  --col-switch:   #1e88e5;
+  --col-repeater: #8e24aa;
+  --sidebar-w: 242px;
 }
 [data-theme="dark"] {
   --primary: #4fc3f7;
@@ -60,15 +56,13 @@
   --nav-bg: #1c1f27;
   --input-bg: #111318;
   --overlay: rgba(0,0,0,.65);
-  --pill-ok-bg: rgba(102,187,106,.12);
-  --pill-ok-text: #66bb6a;
-  --pill-off-bg: rgba(244,67,54,.12);
-  --pill-off-text: #f44336;
-
-  --col-router: #ef5350;
-  --col-lan:    #42a5f5;
-  --col-wlan:   #ffa726;
-  --col-switch: #42a5f5;
+  --pill-ok-bg: rgba(102,187,106,.12);  --pill-ok-text: #66bb6a;
+  --pill-off-bg: rgba(244,67,54,.12);   --pill-off-text: #f44336;
+  --col-router:   #ef5350;
+  --col-lan:      #42a5f5;
+  --col-wlan:     #ffa726;
+  --col-switch:   #42a5f5;
+  --col-repeater: #ba68c8;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -97,152 +91,111 @@ header {
   z-index: 10;
 }
 .logo {
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--accent);
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  font-size: 15px; font-weight: 700; color: var(--accent);
+  display: flex; align-items: center; gap: 8px;
 }
 .logo svg { width: 22px; height: 22px; }
 .header-right { display: flex; gap: 8px; margin-left: auto; align-items: center; }
 .status-pill {
-  font-size: 11px;
-  font-weight: 600;
-  padding: 4px 10px;
-  border-radius: 99px;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
+  font-size: 11px; font-weight: 600; padding: 4px 10px;
+  border-radius: 99px; display: inline-flex; align-items: center; gap: 5px;
 }
 .pill-ok  { background: var(--pill-ok-bg);  color: var(--pill-ok-text); }
 .pill-off { background: var(--pill-off-bg); color: var(--pill-off-text); }
 .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
 .theme-btn {
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  cursor: pointer;
-  padding: 6px 8px;
-  color: var(--text-dim);
-  display: inline-flex;
-  align-items: center;
-  transition: background .15s, color .15s;
+  background: var(--surface2); border: 1px solid var(--border); border-radius: 8px;
+  cursor: pointer; padding: 6px 8px; color: var(--text-dim);
+  display: inline-flex; align-items: center; transition: background .15s, color .15s;
 }
 .theme-btn:hover { color: var(--accent); background: var(--surface); }
 .theme-btn svg { width: 18px; height: 18px; }
 
-/* ── App body: sidebar + main ── */
-.app-body {
-  display: flex;
-  flex: 1;
-  overflow: hidden;
-}
+/* ── App body ── */
+.app-body { display: flex; flex: 1; overflow: hidden; }
 
 /* ── Sidebar ── */
 .sidebar {
-  width: var(--sidebar-w);
-  min-width: var(--sidebar-w);
-  background: var(--nav-bg);
-  border-right: 1px solid var(--border);
-  display: flex;
-  flex-direction: column;
-  overflow-y: auto;
-  overflow-x: hidden;
-  flex-shrink: 0;
+  width: var(--sidebar-w); min-width: var(--sidebar-w);
+  background: var(--nav-bg); border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; overflow-y: auto; overflow-x: hidden; flex-shrink: 0;
 }
-.sb-section {
-  padding: 14px 16px;
-  border-bottom: 1px solid var(--border);
-}
+.sb-section { padding: 14px 16px; border-bottom: 1px solid var(--border); }
 .sb-label {
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: .06em;
-  color: var(--text-dim);
-  margin-bottom: 10px;
+  font-size: 11px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: .06em; color: var(--text-dim); margin-bottom: 10px;
 }
 
-/* Toggle (matching SimpleNAS style) */
-.toggle-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 5px 0;
-}
+/* Toggle (SimpleNAS style) */
+.toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 5px 0; }
 .toggle-row span { font-size: 13px; color: var(--text); }
 .toggle {
-  position: relative;
-  width: 36px;
-  height: 20px;
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: 99px;
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: background .2s;
+  position: relative; width: 36px; height: 20px;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 99px; cursor: pointer; flex-shrink: 0; transition: background .2s;
 }
 .toggle input { display: none; }
 .toggle-knob {
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: var(--text-dim);
-  transition: transform .2s, background .2s;
-  pointer-events: none;
+  position: absolute; top: 2px; left: 2px; width: 14px; height: 14px;
+  border-radius: 50%; background: var(--text-dim);
+  transition: transform .2s, background .2s; pointer-events: none;
 }
 input:checked + .toggle-knob { transform: translateX(16px); background: var(--accent); }
 .toggle.on { background: rgba(3,169,244,.12); border-color: var(--accent); }
 
-/* Legend */
-.legend-row {
+/* ── Segmented control ── */
+.seg-ctrl {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 4px 0;
-  font-size: 13px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 3px;
+  gap: 2px;
+  margin-top: 4px;
 }
-.legend-dot {
-  width: 13px;
-  height: 13px;
-  border-radius: 50%;
-  flex-shrink: 0;
+.seg-btn {
+  flex: 1; padding: 6px 6px; border: none; border-radius: 8px;
+  background: transparent; color: var(--text-dim);
+  font-size: 12px; font-weight: 600; cursor: pointer;
+  transition: all .18s; display: flex; align-items: center; justify-content: center; gap: 5px;
+  white-space: nowrap;
 }
-.d-router { background: var(--col-router); }
-.d-lan    { background: var(--col-lan); }
-.d-wlan   { background: var(--col-wlan); }
+.seg-btn svg { width: 13px; height: 13px; flex-shrink: 0; }
+.seg-btn.active {
+  background: var(--accent); color: var(--primary-text);
+  box-shadow: 0 1px 4px rgba(0,0,0,.18);
+}
+.seg-btn:not(.active):hover { background: var(--border); color: var(--text); }
+.seg-row-label { font-size: 11px; color: var(--text-dim); margin-top: 10px; margin-bottom: 2px; }
+
+/* Badge: mesh not available */
+.mesh-badge {
+  display: none;
+  font-size: 10px; color: var(--text-dim);
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 6px; padding: 3px 8px; margin-top: 6px; text-align: center;
+}
+.mesh-badge.show { display: block; }
+
+/* Legend */
+.legend-row { display: flex; align-items: center; gap: 10px; padding: 4px 0; font-size: 13px; }
+.legend-dot { width: 13px; height: 13px; border-radius: 50%; flex-shrink: 0; }
+.d-router   { background: var(--col-router); }
+.d-lan      { background: var(--col-lan); }
+.d-wlan     { background: var(--col-wlan); }
+.d-repeater { background: var(--col-repeater); }
 
 /* Stats */
-.stat-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 4px 0;
-  font-size: 13px;
-}
+.stat-row { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; font-size: 13px; }
 .stat-val { font-weight: 700; color: var(--text-bright); }
 
 /* Refresh btn */
 .btn-refresh {
-  margin: 12px 16px 8px;
-  padding: 8px 0;
-  background: var(--accent);
-  color: var(--primary-text);
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  transition: opacity .15s;
-  width: calc(100% - 32px);
+  margin: 12px 16px 8px; padding: 8px 0;
+  background: var(--accent); color: var(--primary-text); border: none; border-radius: 8px;
+  cursor: pointer; font-size: 13px; font-weight: 600;
+  display: flex; align-items: center; justify-content: center; gap: 7px;
+  transition: opacity .15s; width: calc(100% - 32px);
 }
 .btn-refresh:hover   { opacity: .85; }
 .btn-refresh:disabled { opacity: .5; cursor: default; }
@@ -251,235 +204,121 @@ input:checked + .toggle-knob { transform: translateX(16px); background: var(--ac
 .spin { animation: spin .6s linear infinite; display: inline-block; }
 .spinner-sm {
   width: 14px; height: 14px;
-  border: 2px solid rgba(255,255,255,.3);
-  border-top-color: #fff;
+  border: 2px solid rgba(255,255,255,.3); border-top-color: #fff;
   border-radius: 50%;
 }
 
-/* ── Graph main area ── */
-.graph-area {
-  flex: 1;
-  position: relative;
-  overflow: hidden;
-  background: var(--bg);
-}
-#graph-svg {
-  width: 100%;
-  height: 100%;
-  display: block;
-}
+/* ── Graph area ── */
+.graph-area { flex: 1; position: relative; overflow: hidden; background: var(--bg); }
+#graph-svg  { width: 100%; height: 100%; display: block; }
 
-/* SVG graph elements */
-.link {
-  stroke-opacity: .35;
-  stroke-width: 1.5;
+/* SVG elements */
+.link { stroke-opacity: .38; }
+.link-lbl {
+  font-size: 10px; fill: var(--text-dim); pointer-events: none;
+  user-select: none; paint-order: stroke;
+  stroke: var(--bg); stroke-width: 3px;
 }
 .node { cursor: pointer; }
-.node circle {
-  stroke-width: 2.5;
-  transition: filter .15s;
-}
-.node:hover circle { filter: brightness(1.25) drop-shadow(0 0 6px currentColor); }
+.node circle { stroke-width: 2.5; }
+.node:hover circle { filter: brightness(1.25) drop-shadow(0 0 7px currentColor); }
 .node.inactive circle { opacity: .28; }
 .node.inactive .lbl  { opacity: .35; }
-.node .lbl {
-  font-size: 11px;
-  fill: var(--text);
-  pointer-events: none;
-  user-select: none;
-}
+.node .lbl { font-size: 11px; fill: var(--text); pointer-events: none; user-select: none; }
 .node .lbl-name { font-weight: 600; }
 .node .lbl-ip   { font-size: 10px; fill: var(--text-dim); }
 
 /* Overlay messages */
 .overlay-msg {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 14px;
-  color: var(--text-dim);
-  font-size: 14px;
-  pointer-events: none;
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+  color: var(--text-dim); font-size: 14px; pointer-events: none;
 }
 .overlay-msg.has-btn { pointer-events: auto; }
 .spinner-lg {
   width: 40px; height: 40px;
-  border: 3px solid var(--border);
-  border-top-color: var(--accent);
-  border-radius: 50%;
-  animation: spin .75s linear infinite;
+  border: 3px solid var(--border); border-top-color: var(--accent);
+  border-radius: 50%; animation: spin .75s linear infinite;
 }
 .err-icon { color: var(--danger); }
 .retry-btn {
-  padding: 7px 20px;
-  border-radius: 8px;
-  background: var(--accent);
-  color: var(--primary-text);
-  border: none;
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 600;
+  padding: 7px 20px; border-radius: 8px;
+  background: var(--accent); color: var(--primary-text); border: none;
+  cursor: pointer; font-size: 13px; font-weight: 600;
 }
 
 /* ── Detail Modal ── */
 .modal-overlay {
-  display: none;
-  position: fixed;
-  inset: 0;
-  background: var(--overlay);
-  z-index: 500;
-  align-items: center;
-  justify-content: center;
-  padding: var(--gutter);
+  display: none; position: fixed; inset: 0;
+  background: var(--overlay); z-index: 500;
+  align-items: center; justify-content: center; padding: var(--gutter);
 }
 .modal-overlay.open { display: flex; }
 .modal {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  width: 100%;
-  max-width: 400px;
-  box-shadow: 0 8px 32px rgba(0,0,0,.22);
-  animation: slide-up .18s ease;
-  overflow: hidden;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+  width: 100%; max-width: 400px; box-shadow: 0 8px 32px rgba(0,0,0,.22);
+  animation: slide-up .18s ease; overflow: hidden;
 }
-@keyframes slide-up {
-  from { opacity: 0; transform: translateY(14px); }
-}
+@keyframes slide-up { from { opacity: 0; transform: translateY(14px); } }
 .modal-head {
-  padding: 18px 20px 14px;
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  align-items: center;
-  gap: 14px;
+  padding: 18px 20px 14px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 14px;
 }
 .modal-icon {
-  width: 42px; height: 42px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  font-size: 17px;
-  font-weight: 700;
-  color: #fff;
+  width: 42px; height: 42px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; font-size: 17px; font-weight: 700; color: #fff;
 }
 .modal-head-text { flex: 1; min-width: 0; }
 .modal-title {
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--text-bright);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  font-size: 15px; font-weight: 700; color: var(--text-bright);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .modal-sub { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
 .modal-close {
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: var(--text-dim);
-  padding: 5px;
-  border-radius: 7px;
-  display: flex;
-  align-items: center;
-  margin-left: auto;
-  flex-shrink: 0;
+  background: none; border: none; cursor: pointer; color: var(--text-dim);
+  padding: 5px; border-radius: 7px; display: flex; align-items: center; margin-left: auto; flex-shrink: 0;
 }
 .modal-close:hover { background: var(--surface2); color: var(--text); }
 .modal-body { padding: 14px 20px; }
 .detail-row {
-  display: flex;
-  align-items: baseline;
-  padding: 7px 0;
-  border-bottom: 1px solid var(--border);
-  gap: 10px;
+  display: flex; align-items: baseline; padding: 7px 0;
+  border-bottom: 1px solid var(--border); gap: 10px;
 }
 .detail-row:last-child { border-bottom: none; }
 .detail-key {
-  font-size: 11px;
-  color: var(--text-dim);
-  text-transform: uppercase;
-  letter-spacing: .04em;
-  font-weight: 600;
-  width: 108px;
-  flex-shrink: 0;
+  font-size: 11px; color: var(--text-dim); text-transform: uppercase;
+  letter-spacing: .04em; font-weight: 600; width: 108px; flex-shrink: 0;
 }
-.detail-val {
-  font-size: 13px;
-  color: var(--text);
-  font-weight: 500;
-  word-break: break-all;
-}
-a.dlink {
-  color: var(--accent);
-  text-decoration: none;
-}
+.detail-val { font-size: 13px; color: var(--text); font-weight: 500; word-break: break-all; }
+a.dlink { color: var(--accent); text-decoration: none; }
 a.dlink:hover { text-decoration: underline; }
 .spill {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 12px;
-  font-weight: 600;
-  padding: 3px 10px;
-  border-radius: 99px;
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 99px;
 }
 .spill-ok  { background: var(--pill-ok-bg);  color: var(--pill-ok-text); }
 .spill-off { background: var(--pill-off-bg); color: var(--pill-off-text); }
-.modal-actions {
-  padding: 10px 20px 18px;
-  display: flex;
-  gap: 8px;
-}
+.modal-actions { padding: 10px 20px 18px; display: flex; gap: 8px; }
 .act-btn {
-  flex: 1;
-  padding: 8px 10px;
-  border-radius: 9px;
-  border: 1px solid var(--border);
-  background: var(--surface2);
-  color: var(--text);
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  text-align: center;
-  text-decoration: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
+  flex: 1; padding: 8px 10px; border-radius: 9px; border: 1px solid var(--border);
+  background: var(--surface2); color: var(--text); font-size: 12px; font-weight: 600;
+  cursor: pointer; text-align: center; text-decoration: none;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
   transition: background .15s, border-color .15s, color .15s;
 }
-.act-btn:hover {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--primary-text);
-}
+.act-btn:hover { background: var(--accent); border-color: var(--accent); color: var(--primary-text); }
 
 /* ── Toast ── */
 #toast-wrap {
-  position: fixed;
-  bottom: 18px;
-  right: 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  z-index: 999;
+  position: fixed; bottom: 18px; right: 18px;
+  display: flex; flex-direction: column; gap: 6px; z-index: 999;
 }
 .toast {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-left: 3px solid var(--success);
-  border-radius: 8px;
-  padding: 10px 16px;
-  font-size: 13px;
-  color: var(--text);
-  box-shadow: var(--shadow);
-  animation: slide-up .2s ease;
-  max-width: 300px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-left: 3px solid var(--success); border-radius: 8px;
+  padding: 10px 16px; font-size: 13px; color: var(--text);
+  box-shadow: var(--shadow); animation: slide-up .2s ease; max-width: 300px;
 }
 .toast.err { border-left-color: var(--danger); }
 
@@ -490,7 +329,7 @@ a.dlink:hover { text-decoration: underline; }
 </head>
 <body data-theme="light">
 
-<!-- Header -->
+<!-- ── Header ── -->
 <header>
   <div class="logo">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -503,8 +342,7 @@ a.dlink:hover { text-decoration: underline; }
   </div>
   <div class="header-right">
     <span class="status-pill pill-ok" id="conn-status">
-      <span class="dot"></span>
-      <span id="conn-text">Verbunden</span>
+      <span class="dot"></span><span id="conn-text">Verbunden</span>
     </span>
     <button class="theme-btn" onclick="toggleTheme()" title="Design wechseln">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -514,15 +352,68 @@ a.dlink:hover { text-decoration: underline; }
   </div>
 </header>
 
-<!-- App body -->
+<!-- ── App body ── -->
 <div class="app-body">
 
   <!-- Sidebar -->
   <nav class="sidebar">
 
+    <!-- Visualisierung -->
+    <div class="sb-section">
+      <div class="sb-label">Visualisierung</div>
+
+      <div class="seg-row-label">Topologie</div>
+      <div class="seg-ctrl">
+        <button class="seg-btn active" data-topo="flat" onclick="setTopo('flat')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"/><circle cx="4" cy="12" r="2"/><circle cx="20" cy="12" r="2"/>
+            <circle cx="12" cy="4" r="2"/><circle cx="12" cy="20" r="2"/>
+            <line x1="6" y1="12" x2="9" y2="12"/><line x1="15" y1="12" x2="18" y2="12"/>
+            <line x1="12" y1="6" x2="12" y2="9"/><line x1="12" y1="15" x2="12" y2="18"/>
+          </svg>
+          Stern
+        </button>
+        <button class="seg-btn" data-topo="mesh" onclick="setTopo('mesh')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="4" r="2"/><circle cx="4" cy="18" r="2"/><circle cx="20" cy="18" r="2"/>
+            <circle cx="12" cy="12" r="2"/>
+            <line x1="12" y1="6" x2="12" y2="10"/><line x1="10.3" y1="13.3" x2="5.5" y2="16.5"/>
+            <line x1="13.7" y1="13.3" x2="18.5" y2="16.5"/>
+          </svg>
+          Mesh
+        </button>
+      </div>
+      <div class="mesh-badge" id="mesh-badge">Kein Mesh verfügbar – Stern wird verwendet</div>
+
+      <div class="seg-row-label">Layout</div>
+      <div class="seg-ctrl">
+        <button class="seg-btn active" data-dir="force" onclick="setDir('force')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="6" cy="6" r="2"/><circle cx="18" cy="8" r="2"/>
+            <circle cx="8" cy="18" r="2"/><circle cx="17" cy="17" r="2"/><circle cx="12" cy="12" r="2"/>
+            <line x1="8" y1="6" x2="10" y2="11"/><line x1="16" y1="8.5" x2="14" y2="11"/>
+            <line x1="10" y1="13" x2="9" y2="16"/><line x1="14" y1="13" x2="16" y2="15"/>
+          </svg>
+          Kraft
+        </button>
+        <button class="seg-btn" data-dir="tree" onclick="setDir('tree')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="4" r="2"/>
+            <circle cx="6" cy="13" r="2"/><circle cx="18" cy="13" r="2"/>
+            <circle cx="3" cy="20" r="2"/><circle cx="9" cy="20" r="2"/>
+            <circle cx="15" cy="20" r="2"/><circle cx="21" cy="20" r="2"/>
+            <line x1="12" y1="6" x2="7" y2="11"/><line x1="12" y1="6" x2="17" y2="11"/>
+            <line x1="6" y1="15" x2="4" y2="18"/><line x1="6" y1="15" x2="8" y2="18"/>
+            <line x1="18" y1="15" x2="16" y2="18"/><line x1="18" y1="15" x2="20" y2="18"/>
+          </svg>
+          Baum
+        </button>
+      </div>
+    </div>
+
+    <!-- Anzeige -->
     <div class="sb-section">
       <div class="sb-label">Anzeige</div>
-
       <div class="toggle-row">
         <span>Namen anzeigen</span>
         <label class="toggle on" id="tog-names">
@@ -530,7 +421,6 @@ a.dlink:hover { text-decoration: underline; }
           <span class="toggle-knob"></span>
         </label>
       </div>
-
       <div class="toggle-row">
         <span>IPs anzeigen</span>
         <label class="toggle" id="tog-ips">
@@ -538,7 +428,6 @@ a.dlink:hover { text-decoration: underline; }
           <span class="toggle-knob"></span>
         </label>
       </div>
-
       <div class="toggle-row">
         <span>Inaktive anzeigen</span>
         <label class="toggle on" id="tog-inactive">
@@ -548,20 +437,23 @@ a.dlink:hover { text-decoration: underline; }
       </div>
     </div>
 
+    <!-- Legende -->
     <div class="sb-section">
       <div class="sb-label">Legende</div>
       <div class="legend-row"><span class="legend-dot d-router"></span>Router / FritzBox</div>
+      <div class="legend-row"><span class="legend-dot d-repeater"></span>Repeater / Mesh-Node</div>
       <div class="legend-row"><span class="legend-dot d-lan"></span>LAN / Switch</div>
       <div class="legend-row"><span class="legend-dot d-wlan"></span>WLAN</div>
     </div>
 
+    <!-- Statistik -->
     <div class="sb-section">
       <div class="sb-label">Statistik</div>
-      <div class="stat-row"><span>Gesamt</span>   <span class="stat-val" id="s-total">—</span></div>
-      <div class="stat-row"><span style="color:var(--success)">Aktiv</span>  <span class="stat-val" id="s-active" style="color:var(--success)">—</span></div>
+      <div class="stat-row"><span>Gesamt</span>    <span class="stat-val" id="s-total">—</span></div>
+      <div class="stat-row"><span style="color:var(--success)">Aktiv</span>   <span class="stat-val" id="s-active"   style="color:var(--success)">—</span></div>
       <div class="stat-row"><span style="color:var(--text-dim)">Inaktiv</span><span class="stat-val" id="s-inactive" style="color:var(--text-dim)">—</span></div>
-      <div class="stat-row"><span style="color:var(--col-wlan)">WLAN</span>  <span class="stat-val" id="s-wlan" style="color:var(--col-wlan)">—</span></div>
-      <div class="stat-row"><span style="color:var(--col-lan)">LAN</span>    <span class="stat-val" id="s-lan"  style="color:var(--col-lan)">—</span></div>
+      <div class="stat-row"><span style="color:var(--col-wlan)">WLAN</span>   <span class="stat-val" id="s-wlan"     style="color:var(--col-wlan)">—</span></div>
+      <div class="stat-row"><span style="color:var(--col-lan)">LAN</span>     <span class="stat-val" id="s-lan"      style="color:var(--col-lan)">—</span></div>
     </div>
 
     <button class="btn-refresh" id="btn-refresh" onclick="doRefresh()">
@@ -577,8 +469,7 @@ a.dlink:hover { text-decoration: underline; }
   <!-- Graph -->
   <div class="graph-area">
     <div class="overlay-msg" id="msg-loading">
-      <div class="spinner-lg"></div>
-      Netzwerk wird geladen…
+      <div class="spinner-lg"></div>Netzwerk wird geladen…
     </div>
     <div class="overlay-msg has-btn" id="msg-error" style="display:none">
       <svg class="err-icon" width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -591,7 +482,6 @@ a.dlink:hover { text-decoration: underline; }
     </div>
     <svg id="graph-svg"></svg>
   </div>
-
 </div>
 
 <!-- Detail Modal -->
@@ -618,49 +508,80 @@ a.dlink:hover { text-decoration: underline; }
 
 <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
 <script>
-/* ── Config ── */
-const NODE_R   = { router: 24, switch: 18, lan: 14, wlan: 13 };
-const NODE_COL = {
-  get router() { return cssVar('--col-router'); },
-  get switch() { return cssVar('--col-switch'); },
-  get lan()    { return cssVar('--col-lan');    },
-  get wlan()   { return cssVar('--col-wlan');   },
-};
-const TYPE_LABEL = { router: 'Router / FritzBox', switch: 'Switch', lan: 'LAN-Gerät', wlan: 'WLAN-Gerät' };
-const TYPE_LETTER = { router: 'F', switch: 'S', lan: 'L', wlan: 'W' };
-
-function cssVar(name) {
-  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+/* ──────────────────────────────────────────────────────────────────
+   Config & helpers
+   ────────────────────────────────────────────────────────────────── */
+const NODE_R = { router: 24, repeater: 20, switch: 18, lan: 14, wlan: 13 };
+function nodeCol(type) {
+  const map = {
+    router:   '--col-router',
+    repeater: '--col-repeater',
+    switch:   '--col-lan',
+    lan:      '--col-lan',
+    wlan:     '--col-wlan',
+  };
+  return cssVar(map[type] || '--col-lan');
 }
+const TYPE_LABEL  = { router:'Router / FritzBox', repeater:'Mesh-Repeater', switch:'Switch', lan:'LAN-Gerät', wlan:'WLAN-Gerät' };
+const TYPE_LETTER = { router:'F', repeater:'R', switch:'S', lan:'L', wlan:'W' };
 
-/* ── State ── */
-let graphData   = null;
-let simulation  = null;
-let showNames   = true;
-let showIPs     = false;
-let showInact   = true;
+function cssVar(v) { return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+function esc(s)    { return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function setText(id,v){ document.getElementById(id).textContent=v; }
 
-/* ── Theme ── */
+/* ──────────────────────────────────────────────────────────────────
+   State
+   ────────────────────────────────────────────────────────────────── */
+let graphData  = null;
+let simulation = null;
+let gLinks, gNodes;          // D3 selections, kept for tick updates
+let curNodes, curLinks;      // current working copies
+
+let topoMode = 'flat';       // 'flat' | 'mesh'
+let dirMode  = 'force';      // 'force' | 'tree'
+let showNames= true;
+let showIPs  = false;
+let showInact= true;
+
+/* ──────────────────────────────────────────────────────────────────
+   Theme
+   ────────────────────────────────────────────────────────────────── */
 function toggleTheme() {
   const dark = document.body.getAttribute('data-theme') !== 'dark';
   document.body.setAttribute('data-theme', dark ? 'dark' : 'light');
   if (graphData) renderGraph(graphData);
 }
 
-/* ── Toggle handlers ── */
-function onToggle(key, el) {
-  const lbl = el.closest('.toggle');
-  lbl.classList.toggle('on', el.checked);
-  if (key === 'names')    { showNames = el.checked; updateLabels(); }
-  if (key === 'ips')      { showIPs   = el.checked; updateLabels(); }
-  if (key === 'inactive') { showInact = el.checked; renderGraph(graphData); }
-}
-function updateLabels() {
-  d3.selectAll('.lbl-name').attr('display', showNames ? null : 'none');
-  d3.selectAll('.lbl-ip').attr('display',   showIPs   ? null : 'none');
+/* ──────────────────────────────────────────────────────────────────
+   Segmented controls
+   ────────────────────────────────────────────────────────────────── */
+function setTopo(mode) {
+  topoMode = mode;
+  document.querySelectorAll('[data-topo]').forEach(b =>
+    b.classList.toggle('active', b.dataset.topo === mode));
+  if (graphData) renderGraph(graphData);
 }
 
-/* ── Data ── */
+function setDir(mode) {
+  dirMode = mode;
+  document.querySelectorAll('[data-dir]').forEach(b =>
+    b.classList.toggle('active', b.dataset.dir === mode));
+  if (graphData) renderGraph(graphData);
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   Toggle handlers
+   ────────────────────────────────────────────────────────────────── */
+function onToggle(key, el) {
+  el.closest('.toggle').classList.toggle('on', el.checked);
+  if (key === 'names')   { showNames = el.checked; d3.selectAll('.lbl-name').attr('display', showNames ? null : 'none'); }
+  if (key === 'ips')     { showIPs   = el.checked; d3.selectAll('.lbl-ip').attr('display',   showIPs   ? null : 'none'); }
+  if (key === 'inactive'){ showInact = el.checked; if (graphData) renderGraph(graphData); }
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   Data loading
+   ────────────────────────────────────────────────────────────────── */
 async function loadNetwork() {
   showMsg('loading');
   try {
@@ -672,8 +593,9 @@ async function loadNetwork() {
     renderGraph(d);
     setStatus(true);
     hideMsg();
+    updateMeshBadge(d);
   } catch(e) {
-    setStatus(false, e.message);
+    setStatus(false);
     showMsg('error', e.message);
   }
 }
@@ -683,17 +605,18 @@ async function doRefresh() {
   btn.disabled = true;
   btn.innerHTML = `<span class="spin spinner-sm"></span> Lädt…`;
   try {
-    const r = await fetch('./api/refresh', { method: 'POST' });
+    const r = await fetch('./api/refresh', { method:'POST' });
     const d = await r.json();
     if (d.error) throw new Error(d.error);
     graphData = d;
     updateStats(d);
     renderGraph(d);
     setStatus(true);
+    updateMeshBadge(d);
     toast('Netzwerk aktualisiert');
   } catch(e) {
     toast(e.message, true);
-    setStatus(false, e.message);
+    setStatus(false);
   }
   btn.disabled = false;
   btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Aktualisieren`;
@@ -706,133 +629,270 @@ function updateStats(d) {
   setText('s-active',  active);
   setText('s-inactive', h.length - active);
   setText('s-wlan', h.filter(n => n.type === 'wlan').length);
-  setText('s-lan',  h.filter(n => n.type !== 'wlan').length);
+  setText('s-lan',  h.filter(n => !['wlan','router','repeater'].includes(n.type)).length);
 }
-function setText(id, v) { document.getElementById(id).textContent = v; }
 
-/* ── Graph ── */
+function updateMeshBadge(d) {
+  const badge = document.getElementById('mesh-badge');
+  badge.classList.toggle('show', !d.has_mesh);
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   Graph rendering
+   ────────────────────────────────────────────────────────────────── */
 function renderGraph(data) {
   const svg = d3.select('#graph-svg');
+
+  // Save current positions for smooth re-layout
+  const prevPos = {};
+  if (curNodes) curNodes.forEach(n => { prevPos[n.id] = { x: n.x, y: n.y }; });
+
   svg.selectAll('*').remove();
-  if (!data || !data.nodes.length) return;
+  if (!data?.nodes?.length) return;
 
   const W = svg.node().clientWidth  || 900;
   const H = svg.node().clientHeight || 600;
 
+  // Choose link set
+  const useMesh = topoMode === 'mesh' && data.has_mesh && data.mesh_links?.length;
+  const rawLinks = useMesh ? data.mesh_links : data.links;
+
+  // Filter inactive nodes
   const visNodes = data.nodes.filter(n => showInact || n.active);
   const visIds   = new Set(visNodes.map(n => n.id));
-  const visLinks = data.links.filter(l =>
-    visIds.has(l.source?.id ?? l.source) && visIds.has(l.target?.id ?? l.target)
-  );
-  const nodes = visNodes.map(n => ({ ...n }));
-  const links = visLinks.map(l => ({ ...l }));
+  const visLinks = rawLinks.filter(l =>
+    visIds.has(l.source?.id ?? l.source) && visIds.has(l.target?.id ?? l.target));
 
-  const rootNode = nodes.find(n => n.type === 'router');
-  if (rootNode) { rootNode.fx = W / 2; rootNode.fy = H / 2; }
+  // Deep copy + restore previous positions for smooth animation
+  curNodes = visNodes.map(n => ({
+    ...n,
+    x: prevPos[n.id]?.x ?? W/2 + (Math.random()-0.5)*80,
+    y: prevPos[n.id]?.y ?? H/2 + (Math.random()-0.5)*80,
+  }));
+  curLinks = visLinks.map(l => ({ ...l }));
+
+  // FritzBox always centered (pin for force mode)
+  const root = curNodes.find(n => n.type === 'router');
+  if (root && dirMode === 'force') { root.fx = W/2; root.fy = H/2; }
 
   const g = svg.append('g');
-
-  const zoom = d3.zoom().scaleExtent([0.15, 5])
+  const zoom = d3.zoom().scaleExtent([0.12, 5])
     .on('zoom', e => g.attr('transform', e.transform));
-  svg.call(zoom);
-  svg.on('dblclick.zoom', null);
+  svg.call(zoom).on('dblclick.zoom', null);
 
-  /* Links */
-  const link = g.append('g').attr('class', 'links')
-    .selectAll('line').data(links).join('line')
+  /* ── Links ── */
+  gLinks = g.append('g').attr('class', 'links');
+  const linkSel = gLinks.selectAll('line').data(curLinks).join('line')
     .attr('class', 'link')
     .attr('stroke', d => {
       const tid = d.target?.id ?? d.target;
-      const t = nodes.find(n => n.id === tid);
-      if (!t) return cssVar('--border');
-      return NODE_COL[t.type] ?? cssVar('--border');
+      const t = curNodes.find(n => n.id === tid);
+      return t ? nodeCol(t.type) : cssVar('--border');
+    })
+    .attr('stroke-width', d => {
+      const sid = d.source?.id ?? d.source;
+      const s = curNodes.find(n => n.id === sid);
+      return (s?.type === 'router' || s?.type === 'repeater') ? 2 : 1.5;
     });
 
-  /* Nodes */
-  const node = g.append('g').attr('class', 'nodes')
-    .selectAll('g').data(nodes).join('g')
+  /* ── Link speed labels (mesh + tree mode) ── */
+  const showLinkLabels = useMesh;
+  const linkLblSel = gLinks.selectAll('text.link-lbl').data(showLinkLabels ? curLinks : []).join('text')
+    .attr('class', 'link-lbl')
+    .attr('text-anchor', 'middle');
+
+  /* ── Nodes ── */
+  gNodes = g.append('g').attr('class', 'nodes');
+  const nodeSel = gNodes.selectAll('g.node').data(curNodes).join('g')
     .attr('class', d => `node ${d.active ? 'active' : 'inactive'}`)
     .call(d3.drag()
-      .on('start', (e, d) => { if (!e.active) sim.alphaTarget(.3).restart(); d.fx = d.x; d.fy = d.y; })
-      .on('drag',  (e, d) => { d.fx = e.x; d.fy = e.y; })
-      .on('end',   (e, d) => { if (!e.active) sim.alphaTarget(0); if (d.type !== 'router') { d.fx = null; d.fy = null; } })
-    )
-    .on('click', (ev, d) => { ev.stopPropagation(); openModal(d); });
+      .on('start', (e,d) => { if(!e.active) simulation?.alphaTarget(.3).restart(); d.fx=d.x; d.fy=d.y; })
+      .on('drag',  (e,d) => { d.fx=e.x; d.fy=e.y; updatePositions(); })
+      .on('end',   (e,d) => {
+        if(!e.active) simulation?.alphaTarget(0);
+        if(d.type !== 'router' && dirMode === 'force') { d.fx=null; d.fy=null; }
+      }))
+    .on('click', (ev,d) => { ev.stopPropagation(); openModal(d); });
 
-  /* Circle */
-  node.append('circle')
-    .attr('r',            d => NODE_R[d.type] ?? 14)
-    .attr('fill',         d => NODE_COL[d.type] ?? cssVar('--col-lan'))
-    .attr('stroke',       d => NODE_COL[d.type] ?? cssVar('--col-lan'))
-    .attr('fill-opacity', d => d.active ? 1 : 0.25)
-    .attr('stroke-opacity', d => d.active ? 0.8 : 0.4);
+  nodeSel.append('circle')
+    .attr('r',             d => NODE_R[d.type] ?? 14)
+    .attr('fill',          d => nodeCol(d.type))
+    .attr('stroke',        d => nodeCol(d.type))
+    .attr('fill-opacity',  d => d.active ? 1 : 0.25)
+    .attr('stroke-opacity',d => d.active ? 0.8 : 0.4);
 
-  /* Letter icon */
-  node.append('text')
-    .attr('text-anchor', 'middle').attr('dominant-baseline', 'central')
-    .attr('fill', 'white')
-    .attr('font-size', d => Math.round((NODE_R[d.type] ?? 14) * 0.75))
-    .attr('font-weight', '700')
-    .style('pointer-events', 'none')
+  nodeSel.append('text')
+    .attr('text-anchor','middle').attr('dominant-baseline','central')
+    .attr('fill','white')
+    .attr('font-size', d => Math.round((NODE_R[d.type]??14)*0.75))
+    .attr('font-weight','700')
+    .style('pointer-events','none')
     .text(d => TYPE_LETTER[d.type] ?? '?');
 
-  /* Name label */
-  node.append('text')
-    .attr('class', 'lbl lbl-name')
-    .attr('text-anchor', 'middle')
-    .attr('dy', d => (NODE_R[d.type] ?? 14) + 14)
+  nodeSel.append('text')
+    .attr('class','lbl lbl-name')
+    .attr('text-anchor','middle')
+    .attr('dy', d => (NODE_R[d.type]??14) + 14)
     .attr('display', showNames ? null : 'none')
     .text(d => d.name);
 
-  /* IP label */
-  node.append('text')
-    .attr('class', 'lbl lbl-ip')
-    .attr('text-anchor', 'middle')
-    .attr('dy', d => (NODE_R[d.type] ?? 14) + 26)
+  nodeSel.append('text')
+    .attr('class','lbl lbl-ip')
+    .attr('text-anchor','middle')
+    .attr('dy', d => (NODE_R[d.type]??14) + 26)
     .attr('display', showIPs ? null : 'none')
     .text(d => d.ip);
 
-  /* Simulation */
+  /* ── Shared tick callback ── */
+  function updatePositions() {
+    linkSel
+      .attr('x1', d => d.source.x).attr('y1', d => d.source.y)
+      .attr('x2', d => d.target.x).attr('y2', d => d.target.y);
+    if (showLinkLabels) {
+      linkLblSel
+        .attr('x', d => ((d.source.x + d.target.x)/2))
+        .attr('y', d => ((d.source.y + d.target.y)/2) - 4)
+        .text(d => d.speed_rx ? `${d.speed_rx} Mbit/s` : '');
+    }
+    nodeSel.attr('transform', d => `translate(${d.x},${d.y})`);
+  }
+
+  /* ── Choose layout ── */
   if (simulation) simulation.stop();
-  simulation = sim = d3.forceSimulation(nodes)
-    .force('link',      d3.forceLink(links).id(d => d.id).distance(130).strength(0.9))
-    .force('charge',    d3.forceManyBody().strength(-320))
-    .force('collision', d3.forceCollide().radius(d => (NODE_R[d.type] ?? 14) + 32))
-    .on('tick', () => {
-      link.attr('x1', d => d.source.x).attr('y1', d => d.source.y)
-          .attr('x2', d => d.target.x).attr('y2', d => d.target.y);
-      node.attr('transform', d => `translate(${d.x},${d.y})`);
-    });
+
+  if (dirMode === 'tree') {
+    applyTreeLayout(W, H, updatePositions);
+  } else {
+    applyForceLayout(W, H, updatePositions);
+  }
 }
-let sim;
 
-/* ── Modal ── */
+/* ──────────────────────────────────────────────────────────────────
+   Force layout
+   ────────────────────────────────────────────────────────────────── */
+function applyForceLayout(W, H, tick) {
+  // Unfix all except root
+  curNodes.forEach(n => { if (n.type !== 'router') { n.fx = null; n.fy = null; } });
+  const root = curNodes.find(n => n.type === 'router');
+  if (root) { root.fx = W/2; root.fy = H/2; }
+
+  simulation = d3.forceSimulation(curNodes)
+    .force('link',      d3.forceLink(curLinks).id(d=>d.id).distance(130).strength(0.9))
+    .force('charge',    d3.forceManyBody().strength(-280))
+    .force('collision', d3.forceCollide().radius(d => (NODE_R[d.type]??14) + 32))
+    .on('tick', tick);
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   Tree layout (top = Router, bottom = Clients)
+   ────────────────────────────────────────────────────────────────── */
+function applyTreeLayout(W, H, tick) {
+  const posMap = computeTreePositions(W, H);
+
+  // Fix every node at its tree position
+  curNodes.forEach(n => {
+    if (posMap[n.id]) { n.fx = posMap[n.id].x; n.fy = posMap[n.id].y; }
+  });
+
+  // Custom "spring to target" force for smooth animated arrival
+  function forceTarget(alpha) {
+    curNodes.forEach(n => {
+      const p = posMap[n.id];
+      if (!p) return;
+      n.vx = (n.vx || 0) + (p.x - n.x) * 0.35 * alpha;
+      n.vy = (n.vy || 0) + (p.y - n.y) * 0.35 * alpha;
+    });
+  }
+
+  simulation = d3.forceSimulation(curNodes)
+    .force('link',      d3.forceLink(curLinks).id(d=>d.id).distance(1).strength(0.05))
+    .force('target',    forceTarget)
+    .force('collision', d3.forceCollide().radius(d => (NODE_R[d.type]??14) + 18))
+    .alphaDecay(0.04)
+    .on('tick', tick);
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   Tree position calculator
+   ────────────────────────────────────────────────────────────────── */
+function computeTreePositions(W, H) {
+  // Build child map
+  const childMap = {};
+  const parentOf = {};
+  curLinks.forEach(l => {
+    const s = l.source?.id ?? l.source;
+    const t = l.target?.id ?? l.target;
+    if (!childMap[s]) childMap[s] = [];
+    if (!childMap[s].includes(t)) childMap[s].push(t);
+    parentOf[t] = s;
+  });
+
+  // Root = node with no parent (prefer type=router)
+  const rootNode = curNodes.find(n => !parentOf[n.id] && n.type === 'router')
+                || curNodes.find(n => !parentOf[n.id])
+                || curNodes[0];
+
+  const visited = new Set();
+  function build(id) {
+    if (visited.has(id)) return { id, children: [] };
+    visited.add(id);
+    return { id, children: (childMap[id] || []).map(build) };
+  }
+
+  const hier = d3.hierarchy(build(rootNode.id));
+
+  // Horizontal spacing based on tree width
+  const nodeSpacingX = Math.max(55, (W - 80) / Math.max(1, hier.leaves().length));
+  d3.tree().nodeSize([nodeSpacingX, 120])(hier);
+
+  // Center tree horizontally
+  let minX = Infinity, maxX = -Infinity;
+  hier.each(d => { minX = Math.min(minX, d.x); maxX = Math.max(maxX, d.x); });
+  const offsetX = W/2 - (minX + maxX)/2;
+  const offsetY = 60;
+
+  const posMap = {};
+  hier.each(d => { posMap[d.data.id] = { x: d.x + offsetX, y: d.y + offsetY }; });
+
+  // Nodes not in the tree (disconnected in this view) → park below
+  let extraX = 40;
+  curNodes.forEach(n => {
+    if (!posMap[n.id]) { posMap[n.id] = { x: extraX, y: H - 50 }; extraX += 70; }
+  });
+
+  return posMap;
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   Detail Modal
+   ────────────────────────────────────────────────────────────────── */
 function openModal(d) {
-  const col = NODE_COL[d.type] ?? cssVar('--col-lan');
-
+  const col = nodeCol(d.type);
   document.getElementById('m-icon').style.background = col;
   document.getElementById('m-icon').textContent = TYPE_LETTER[d.type] ?? '?';
   document.getElementById('m-title').textContent = d.name;
   document.getElementById('m-sub').textContent   = TYPE_LABEL[d.type] ?? 'Gerät';
 
   const rows = [];
-
-  rows.push({ k: 'Status', v: d.active
+  rows.push({ k:'Status', v: d.active
     ? `<span class="spill spill-ok"><span class="dot"></span> Online</span>`
     : `<span class="spill spill-off"><span class="dot"></span> Offline</span>`,
-    raw: true });
+    raw:true });
 
   if (d.ip)
-    rows.push({ k: 'IP-Adresse', v: `<a class="dlink" href="http://${esc(d.ip)}" target="_blank" rel="noopener">${esc(d.ip)}</a>`, raw: true });
+    rows.push({ k:'IP-Adresse', raw:true,
+      v:`<a class="dlink" href="http://${esc(d.ip)}" target="_blank" rel="noopener">${esc(d.ip)}</a>` });
 
-  rows.push({ k: 'Hostname', v: d.name
-    ? `<a class="dlink" href="smb://${esc(d.name)}" target="_blank" rel="noopener">${esc(d.name)}</a>`
-    : '—', raw: true });
+  rows.push({ k:'Hostname', raw:true,
+    v: d.name
+      ? `<a class="dlink" href="smb://${esc(d.name)}" target="_blank" rel="noopener">${esc(d.name)}</a>`
+      : '—' });
 
-  if (d.mac)            rows.push({ k: 'MAC-Adresse',    v: d.mac });
-  if (d.interface)      rows.push({ k: 'Verbindungstyp', v: d.interface === '802.11' ? 'WLAN (802.11)' : d.interface });
-  if (d.speed != null)  rows.push({ k: 'Geschwindigkeit',v: `${d.speed} Mbit/s` });
-  if (d.address_source) rows.push({ k: 'IP-Vergabe',     v: d.address_source });
+  if (d.mac)            rows.push({ k:'MAC-Adresse',     v:d.mac });
+  if (d.interface)      rows.push({ k:'Verbindungstyp',  v:d.interface === '802.11' ? 'WLAN (802.11)' : d.interface });
+  if (d.speed != null)  rows.push({ k:'Geschwindigkeit', v:`${d.speed} Mbit/s` });
+  if (d.mesh_role)      rows.push({ k:'Mesh-Rolle',      v:d.mesh_role === 'master' ? 'Master' : 'Slave (Repeater)' });
+  if (d.address_source) rows.push({ k:'IP-Vergabe',      v:d.address_source });
 
   document.getElementById('m-body').innerHTML = rows.map(r => `
     <div class="detail-row">
@@ -861,36 +921,28 @@ function closeModal(ev) {
     document.getElementById('modal').classList.remove('open');
 }
 
-/* ── Status / Messages ── */
-function setStatus(ok, msg) {
-  const el = document.getElementById('conn-status');
-  const tx = document.getElementById('conn-text');
-  el.className = 'status-pill ' + (ok ? 'pill-ok' : 'pill-off');
-  tx.textContent = ok ? 'Verbunden' : 'Fehler';
+/* ──────────────────────────────────────────────────────────────────
+   Status / Messages / Toast
+   ────────────────────────────────────────────────────────────────── */
+function setStatus(ok) {
+  document.getElementById('conn-status').className = 'status-pill ' + (ok ? 'pill-ok' : 'pill-off');
+  document.getElementById('conn-text').textContent = ok ? 'Verbunden' : 'Fehler';
 }
 function showMsg(type, txt) {
-  document.getElementById('msg-loading').style.display = type === 'loading' ? 'flex' : 'none';
-  document.getElementById('msg-error').style.display   = type === 'error'   ? 'flex' : 'none';
+  document.getElementById('msg-loading').style.display = type==='loading' ? 'flex':'none';
+  document.getElementById('msg-error').style.display   = type==='error'   ? 'flex':'none';
   if (txt) document.getElementById('msg-error-text').textContent = txt;
 }
 function hideMsg() {
-  document.getElementById('msg-loading').style.display = 'none';
-  document.getElementById('msg-error').style.display   = 'none';
+  document.getElementById('msg-loading').style.display='none';
+  document.getElementById('msg-error').style.display='none';
 }
-
-/* ── Toast ── */
-function toast(msg, err = false) {
+function toast(msg, err=false) {
   const t = document.createElement('div');
-  t.className = 'toast' + (err ? ' err' : '');
+  t.className = 'toast'+(err?' err':'');
   t.textContent = msg;
   document.getElementById('toast-wrap').appendChild(t);
-  setTimeout(() => t.remove(), 3500);
-}
-
-/* ── Util ── */
-function esc(s) {
-  return String(s ?? '')
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  setTimeout(()=>t.remove(), 3500);
 }
 
 /* ── Init ── */
