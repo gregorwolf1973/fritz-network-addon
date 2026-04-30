@@ -332,16 +332,23 @@ def _fetch_fresh() -> dict:
     # Priority for parent selection:
     #  1. WiFi client → ap_mac from host-list XML (= the AP/repeater it connected to)
     #  2. LAN client  → same FritzBox port as a known switch node
-    #  3. Fallback    → fritzbox_root (star topology)
+    #  3. LAN client  → if exactly one switch in the network, route through it
+    #                   (FritzBox doesn't reliably report ports for switch-attached
+    #                   devices; this heuristic groups them visually anyway)
+    #  4. Fallback    → fritzbox_root (star topology)
 
-    # Build port → switch_node_id map from the switch nodes we know about
+    # Build port → switch_node_id map from switch nodes
     port_to_switch: dict[int, str] = {}
+    switch_ids: list[str] = []
     for n in nodes:
-        if n["type"] == "switch" and n.get("mac"):
-            info = hostlist_info.get(n["mac"], {})
-            p    = info.get("port", 0)
-            if p > 0:
-                port_to_switch[p] = n["id"]
+        if n["type"] == "switch":
+            switch_ids.append(n["id"])
+            if n.get("mac"):
+                info = hostlist_info.get(n["mac"], {})
+                p    = info.get("port", 0)
+                if p > 0:
+                    port_to_switch[p] = n["id"]
+    sole_switch_id = switch_ids[0] if len(switch_ids) == 1 else None
 
     flat_links: list[dict] = []
     for n in nodes[1:]:
@@ -354,13 +361,14 @@ def _fetch_fresh() -> dict:
             if ap_mac and ap_mac in mac_to_id:
                 # WiFi: connect to the AP/repeater it's associated with
                 ap_id = mac_to_id[ap_mac]
-                if ap_id != n["id"]:          # avoid self-loop
+                if ap_id != n["id"]:                      # avoid self-loop
                     parent_id = ap_id
-            elif n["type"] not in ("repeater",) and port > 0 and port in port_to_switch:
-                # LAN: same port as a switch → route through switch
-                sw_id = port_to_switch[port]
-                if sw_id != n["id"]:          # don't make switch its own parent
-                    parent_id = sw_id
+            elif n["type"] == "lan":
+                # Pure LAN device → try port-match first, else sole-switch fallback
+                if port > 0 and port in port_to_switch and port_to_switch[port] != n["id"]:
+                    parent_id = port_to_switch[port]
+                elif sole_switch_id and sole_switch_id != n["id"]:
+                    parent_id = sole_switch_id
 
         flat_links.append({
             "source":    parent_id,
@@ -369,6 +377,10 @@ def _fetch_fresh() -> dict:
             "speed_rx":  n.get("speed"),
             "speed_tx":  None,
         })
+
+    # Make sure the switch itself is connected to fritzbox_root, never to itself
+    # or to one of its own children — its own flat_link entry already does that
+    # because n["type"] == "switch" doesn't match any of the if/elif branches.
 
     mesh_links, has_mesh = _build_mesh_links(mesh_json, mac_to_id)
 

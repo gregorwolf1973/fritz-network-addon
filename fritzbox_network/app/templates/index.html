@@ -714,16 +714,16 @@ function renderGraph(data) {
   let rawLinks;
   if (useMesh) {
     // mesh_links covers router↔repeater backhaul connections.
-    // Regular client devices are NOT in the mesh JSON, so we add the flat
-    // star-links for any node that has no mesh link as source or target.
-    const meshLinkedIds = new Set();
+    // A node has a "mesh parent" only when it appears as TARGET in mesh_links.
+    // Filtering by source+target was wrong: a repeater that has mesh children
+    // (= source) but no mesh parent (= target) would lose its flat link too.
+    const nodesWithMeshParent = new Set();
     data.mesh_links.forEach(l => {
-      meshLinkedIds.add(l.source?.id ?? l.source);
-      meshLinkedIds.add(l.target?.id ?? l.target);
+      nodesWithMeshParent.add(l.target?.id ?? l.target);
     });
     const clientFlatLinks = data.links.filter(l => {
       const tid = l.target?.id ?? l.target;
-      return !meshLinkedIds.has(tid);
+      return !nodesWithMeshParent.has(tid);
     });
     rawLinks = [...data.mesh_links, ...clientFlatLinks];
   } else {
