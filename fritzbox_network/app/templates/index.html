@@ -517,6 +517,14 @@ a.dlink:hover { text-decoration: underline; }
   </div>
 
   <div class="sb-section">
+    <button class="reset-btn" onclick="saveLayout()" style="margin-bottom:6px">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+        <polyline points="17 21 17 13 7 13 7 21"/>
+        <polyline points="7 3 7 8 15 8"/>
+      </svg>
+      Layout speichern
+    </button>
     <button class="reset-btn" onclick="resetLayout()">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <polyline points="1 4 1 10 7 10"/>
@@ -525,7 +533,8 @@ a.dlink:hover { text-decoration: underline; }
       Layout zurücksetzen
     </button>
     <p style="font-size:10px;color:var(--text-dim);margin-top:8px;line-height:1.4">
-      Tipp: Doppelklick auf einen Knoten löst die Pinnadel.
+      Positionen werden beim Ziehen automatisch gespeichert.<br>
+      Doppelklick auf einen Knoten löst die Pinnadel.
     </p>
   </div>
 
@@ -736,12 +745,18 @@ function renderGraph(data) {
   const visLinks = rawLinks.filter(l =>
     visIds.has(l.source?.id ?? l.source) && visIds.has(l.target?.id ?? l.target));
 
-  // Deep copy + restore previous positions for smooth animation
-  curNodes = visNodes.map(n => ({
-    ...n,
-    x: prevPos[n.id]?.x ?? W/2 + (Math.random()-0.5)*80,
-    y: prevPos[n.id]?.y ?? H/2 + (Math.random()-0.5)*80,
-  }));
+  // Deep copy + restore previous positions for smooth animation.
+  // Saved layout (localStorage) takes precedence over in-memory prevPos
+  // and is applied as fx/fy so nodes are pinned where the user put them.
+  const savedLayout = loadSavedLayout();
+  curNodes = visNodes.map(n => {
+    const saved = savedLayout[n.id];
+    const x = saved?.x ?? prevPos[n.id]?.x ?? W/2 + (Math.random()-0.5)*80;
+    const y = saved?.y ?? prevPos[n.id]?.y ?? H/2 + (Math.random()-0.5)*80;
+    const node = { ...n, x, y };
+    if (saved && n.type !== 'router') { node.fx = saved.x; node.fy = saved.y; }
+    return node;
+  });
   curLinks = visLinks.map(l => ({ ...l }));
 
   // ── Fallback links for isolated nodes ────────────────────────────
@@ -800,12 +815,16 @@ function renderGraph(data) {
     .call(d3.drag()
       .on('start', (e,d) => { if(!e.active) simulation?.alphaTarget(.3).restart(); d.fx=d.x; d.fy=d.y; })
       .on('drag',  (e,d) => { d.fx=e.x; d.fy=e.y; updatePositions(); })
-      .on('end',   (e,d) => { if(!e.active) simulation?.alphaTarget(0); /* keep pinned */ }))
+      .on('end',   (e,d) => {
+        if(!e.active) simulation?.alphaTarget(0);
+        saveNodePosition(d);          // auto-persist position after drag
+      }))
     .on('click',   (ev,d) => { ev.stopPropagation(); openModal(d); })
     .on('dblclick',(ev,d) => {
       ev.stopPropagation();
       if (d.type === 'router') return;
       d.fx = null; d.fy = null;
+      removeNodePosition(d.id);       // unpin → forget saved position
       simulation?.alpha(0.3).restart();
     });
 
@@ -1068,12 +1087,51 @@ document.addEventListener('click', e => {
 });
 
 /* ──────────────────────────────────────────────────────────────────
-   Reset layout (unpin all, re-heat simulation)
+   Layout persistence (localStorage)
+   Key: fnw-layout-v1  →  { nodeId: {x, y}, ... }
+   ────────────────────────────────────────────────────────────────── */
+const LAYOUT_KEY = 'fnw-layout-v1';
+
+function loadSavedLayout() {
+  try { return JSON.parse(localStorage.getItem(LAYOUT_KEY) || '{}') || {}; }
+  catch { return {}; }
+}
+function writeSavedLayout(map) {
+  localStorage.setItem(LAYOUT_KEY, JSON.stringify(map));
+}
+function saveNodePosition(d) {
+  if (!d || d.type === 'router') return;
+  const map = loadSavedLayout();
+  map[d.id] = { x: d.x, y: d.y };
+  writeSavedLayout(map);
+}
+function removeNodePosition(id) {
+  const map = loadSavedLayout();
+  if (map[id]) { delete map[id]; writeSavedLayout(map); }
+}
+
+/* Explicit "Layout speichern" – pin every visible node where it currently is */
+function saveLayout() {
+  if (!curNodes) return;
+  const map = {};
+  curNodes.forEach(n => {
+    if (n.type === 'router') return;
+    map[n.id] = { x: n.x, y: n.y };
+    n.fx = n.x; n.fy = n.y;          // pin so they stop moving immediately
+  });
+  writeSavedLayout(map);
+  simulation?.alpha(0).stop();
+  toast('Layout gespeichert');
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   Reset layout (unpin all, clear storage, re-heat simulation)
    ────────────────────────────────────────────────────────────────── */
 function resetLayout() {
   curNodes?.forEach(n => {
     if (n.type !== 'router') { n.fx = null; n.fy = null; }
   });
+  localStorage.removeItem(LAYOUT_KEY);
   simulation?.alpha(0.6).restart();
   toast('Layout zurückgesetzt');
 }
