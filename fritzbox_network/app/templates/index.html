@@ -213,7 +213,7 @@ input:checked + .toggle-knob { transform: translateX(16px); background: var(--ac
 #graph-svg  { width: 100%; height: 100%; display: block; }
 
 /* SVG elements */
-.link { stroke-opacity: .38; }
+.link { }
 .link-lbl {
   font-size: 10px; fill: var(--text-dim); pointer-events: none;
   user-select: none; paint-order: stroke;
@@ -544,13 +544,22 @@ let showIPs  = false;
 let showInact= true;
 
 /* ──────────────────────────────────────────────────────────────────
-   Theme
+   Theme  (persisted via localStorage)
    ────────────────────────────────────────────────────────────────── */
+function applyTheme(dark) {
+  document.body.setAttribute('data-theme', dark ? 'dark' : 'light');
+  localStorage.setItem('fnw-theme', dark ? 'dark' : 'light');
+}
 function toggleTheme() {
   const dark = document.body.getAttribute('data-theme') !== 'dark';
-  document.body.setAttribute('data-theme', dark ? 'dark' : 'light');
+  applyTheme(dark);
   if (graphData) renderGraph(graphData);
 }
+// Restore saved theme immediately (before first paint)
+(function() {
+  const saved = localStorage.getItem('fnw-theme');
+  if (saved) document.body.setAttribute('data-theme', saved);
+})();
 
 /* ──────────────────────────────────────────────────────────────────
    Segmented controls
@@ -671,6 +680,22 @@ function renderGraph(data) {
   }));
   curLinks = visLinks.map(l => ({ ...l }));
 
+  // ── Fallback links for isolated nodes ────────────────────────────
+  // Nodes that appear in no link would fly off freely → anchor them
+  // to fritzbox_root with a weak invisible link so the simulation
+  // keeps them inside the graph.
+  const linkedIds = new Set();
+  curLinks.forEach(l => {
+    linkedIds.add(l.source?.id ?? l.source);
+    linkedIds.add(l.target?.id ?? l.target);
+  });
+  const rootId = curNodes.find(n => n.type === 'router')?.id ?? 'fritzbox_root';
+  curNodes.forEach(n => {
+    if (!linkedIds.has(n.id) && n.id !== rootId) {
+      curLinks.push({ source: n.id, target: rootId, link_type: 'fallback', speed_rx: null, speed_tx: null, _fallback: true });
+    }
+  });
+
   // FritzBox always centered (pin for force mode)
   const root = curNodes.find(n => n.type === 'router');
   if (root && dirMode === 'force') { root.fx = W/2; root.fy = H/2; }
@@ -685,11 +710,14 @@ function renderGraph(data) {
   const linkSel = gLinks.selectAll('line').data(curLinks).join('line')
     .attr('class', 'link')
     .attr('stroke', d => {
+      if (d._fallback) return 'transparent';
       const tid = d.target?.id ?? d.target;
       const t = curNodes.find(n => n.id === tid);
       return t ? nodeCol(t.type) : cssVar('--border');
     })
+    .attr('stroke-opacity', d => d._fallback ? 0 : 0.38)
     .attr('stroke-width', d => {
+      if (d._fallback) return 0;
       const sid = d.source?.id ?? d.source;
       const s = curNodes.find(n => n.id === sid);
       return (s?.type === 'router' || s?.type === 'repeater') ? 2 : 1.5;
@@ -776,10 +804,15 @@ function applyForceLayout(W, H, tick) {
   const root = curNodes.find(n => n.type === 'router');
   if (root) { root.fx = W/2; root.fy = H/2; }
 
+  // Shorter link distance in mesh mode (real topology is denser)
+  const linkDist = topoMode === 'mesh' ? 75 : 120;
+
   simulation = d3.forceSimulation(curNodes)
-    .force('link',      d3.forceLink(curLinks).id(d=>d.id).distance(130).strength(0.9))
-    .force('charge',    d3.forceManyBody().strength(-280))
-    .force('collision', d3.forceCollide().radius(d => (NODE_R[d.type]??14) + 32))
+    .force('link',      d3.forceLink(curLinks).id(d=>d.id).distance(linkDist).strength(0.9))
+    .force('charge',    d3.forceManyBody().strength(-200))
+    .force('collision', d3.forceCollide().radius(d => (NODE_R[d.type]??14) + 24))
+    .force('centerX',   d3.forceX(W/2).strength(0.04))
+    .force('centerY',   d3.forceY(H/2).strength(0.04))
     .on('tick', tick);
 }
 
@@ -841,9 +874,10 @@ function computeTreePositions(W, H) {
 
   const hier = d3.hierarchy(build(rootNode.id));
 
-  // Horizontal spacing based on tree width
-  const nodeSpacingX = Math.max(55, (W - 80) / Math.max(1, hier.leaves().length));
-  d3.tree().nodeSize([nodeSpacingX, 120])(hier);
+  // Horizontal spacing: tighter in mesh mode
+  const baseSpacingX = topoMode === 'mesh' ? 46 : 56;
+  const nodeSpacingX = Math.min(baseSpacingX, (W - 60) / Math.max(1, hier.leaves().length));
+  d3.tree().nodeSize([Math.max(40, nodeSpacingX), 95])(hier);
 
   // Center tree horizontally
   let minX = Infinity, maxX = -Infinity;
