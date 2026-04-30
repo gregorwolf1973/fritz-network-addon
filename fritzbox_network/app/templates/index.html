@@ -885,8 +885,19 @@ function renderGraph(data) {
    Force layout
    ────────────────────────────────────────────────────────────────── */
 function applyForceLayout(W, H, tick) {
-  // Unfix all except root
-  curNodes.forEach(n => { if (n.type !== 'router') { n.fx = null; n.fy = null; } });
+  // Unfix all except root – BUT keep saved-layout pins intact.
+  const savedLayout = loadSavedLayout();
+  curNodes.forEach(n => {
+    if (n.type === 'router') return;
+    const sp = savedLayout[n.id];
+    if (sp) {
+      // Re-assert the pin (renderGraph already did this, but a topology
+      // toggle calls runLayout → applyForceLayout again, so be defensive).
+      n.fx = sp.x; n.fy = sp.y;
+    } else {
+      n.fx = null; n.fy = null;
+    }
+  });
   const root = curNodes.find(n => n.type === 'router');
   if (root) { root.fx = W/2; root.fy = H/2; }
 
