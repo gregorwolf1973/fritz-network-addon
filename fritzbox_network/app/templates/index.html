@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<base href="./">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FritzBox Network</title>
+<style>
+/* ── HA-style Theme Variables (matching SimpleNAS) ── */
+:root, [data-theme="light"] {
+  --primary: #03a9f4;
+  --primary-text: #fff;
+  --accent: #03a9f4;
+  --bg: #f5f6fa;
+  --surface: #ffffff;
+  --surface2: #f0f2f5;
+  --border: #e1e5eb;
+  --text: #1c1c1c;
+  --text-dim: #6e7681;
+  --text-bright: #1c1c1c;
+  --danger: #db4437;
+  --warn: #f4b400;
+  --success: #0f9d58;
+  --shadow: 0 1px 3px rgba(0,0,0,.08);
+  --radius: 12px;
+  --gutter: 16px;
+  --header-bg: #ffffff;
+  --nav-bg: #ffffff;
+  --input-bg: #f5f6fa;
+  --overlay: rgba(0,0,0,.4);
+  --pill-ok-bg: #e6f7ef;
+  --pill-ok-text: #0f9d58;
+  --pill-off-bg: #fde7e6;
+  --pill-off-text: #db4437;
+
+  /* Network colors */
+  --col-router: #e53935;
+  --col-lan:    #1e88e5;
+  --col-wlan:   #fb8c00;
+  --col-switch: #1e88e5;
+
+  --sidebar-w: 236px;
+}
+[data-theme="dark"] {
+  --primary: #4fc3f7;
+  --primary-text: #0a0a0a;
+  --accent: #4fc3f7;
+  --bg: #111318;
+  --surface: #1c1f27;
+  --surface2: #252830;
+  --border: #333842;
+  --text: #c8cdd5;
+  --text-dim: #6b7280;
+  --text-bright: #edf0f5;
+  --danger: #f44336;
+  --warn: #ffb74d;
+  --success: #66bb6a;
+  --shadow: 0 1px 4px rgba(0,0,0,.3);
+  --header-bg: #1c1f27;
+  --nav-bg: #1c1f27;
+  --input-bg: #111318;
+  --overlay: rgba(0,0,0,.65);
+  --pill-ok-bg: rgba(102,187,106,.12);
+  --pill-ok-text: #66bb6a;
+  --pill-off-bg: rgba(244,67,54,.12);
+  --pill-off-text: #f44336;
+
+  --col-router: #ef5350;
+  --col-lan:    #42a5f5;
+  --col-wlan:   #ffa726;
+  --col-switch: #42a5f5;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", sans-serif;
+  font-size: 14px;
+  background: var(--bg);
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+/* ── Header ── */
+header {
+  background: var(--header-bg);
+  border-bottom: 1px solid var(--border);
+  padding: 0 var(--gutter);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 52px;
+  flex-shrink: 0;
+  box-shadow: var(--shadow);
+  z-index: 10;
+}
+.logo {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.logo svg { width: 22px; height: 22px; }
+.header-right { display: flex; gap: 8px; margin-left: auto; align-items: center; }
+.status-pill {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 99px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.pill-ok  { background: var(--pill-ok-bg);  color: var(--pill-ok-text); }
+.pill-off { background: var(--pill-off-bg); color: var(--pill-off-text); }
+.dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+.theme-btn {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  padding: 6px 8px;
+  color: var(--text-dim);
+  display: inline-flex;
+  align-items: center;
+  transition: background .15s, color .15s;
+}
+.theme-btn:hover { color: var(--accent); background: var(--surface); }
+.theme-btn svg { width: 18px; height: 18px; }
+
+/* ── App body: sidebar + main ── */
+.app-body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ── Sidebar ── */
+.sidebar {
+  width: var(--sidebar-w);
+  min-width: var(--sidebar-w);
+  background: var(--nav-bg);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+  flex-shrink: 0;
+}
+.sb-section {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.sb-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--text-dim);
+  margin-bottom: 10px;
+}
+
+/* Toggle (matching SimpleNAS style) */
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 5px 0;
+}
+.toggle-row span { font-size: 13px; color: var(--text); }
+.toggle {
+  position: relative;
+  width: 36px;
+  height: 20px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 99px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background .2s;
+}
+.toggle input { display: none; }
+.toggle-knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--text-dim);
+  transition: transform .2s, background .2s;
+  pointer-events: none;
+}
+input:checked + .toggle-knob { transform: translateX(16px); background: var(--accent); }
+.toggle.on { background: rgba(3,169,244,.12); border-color: var(--accent); }
+
+/* Legend */
+.legend-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 0;
+  font-size: 13px;
+}
+.legend-dot {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.d-router { background: var(--col-router); }
+.d-lan    { background: var(--col-lan); }
+.d-wlan   { background: var(--col-wlan); }
+
+/* Stats */
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+  font-size: 13px;
+}
+.stat-val { font-weight: 700; color: var(--text-bright); }
+
+/* Refresh btn */
+.btn-refresh {
+  margin: 12px 16px 8px;
+  padding: 8px 0;
+  background: var(--accent);
+  color: var(--primary-text);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  transition: opacity .15s;
+  width: calc(100% - 32px);
+}
+.btn-refresh:hover   { opacity: .85; }
+.btn-refresh:disabled { opacity: .5; cursor: default; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+.spin { animation: spin .6s linear infinite; display: inline-block; }
+.spinner-sm {
+  width: 14px; height: 14px;
+  border: 2px solid rgba(255,255,255,.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+}
+
+/* ── Graph main area ── */
+.graph-area {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background: var(--bg);
+}
+#graph-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* SVG graph elements */
+.link {
+  stroke-opacity: .35;
+  stroke-width: 1.5;
+}
+.node { cursor: pointer; }
+.node circle {
+  stroke-width: 2.5;
+  transition: filter .15s;
+}
+.node:hover circle { filter: brightness(1.25) drop-shadow(0 0 6px currentColor); }
+.node.inactive circle { opacity: .28; }
+.node.inactive .lbl  { opacity: .35; }
+.node .lbl {
+  font-size: 11px;
+  fill: var(--text);
+  pointer-events: none;
+  user-select: none;
+}
+.node .lbl-name { font-weight: 600; }
+.node .lbl-ip   { font-size: 10px; fill: var(--text-dim); }
+
+/* Overlay messages */
+.overlay-msg {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  color: var(--text-dim);
+  font-size: 14px;
+  pointer-events: none;
+}
+.overlay-msg.has-btn { pointer-events: auto; }
+.spinner-lg {
+  width: 40px; height: 40px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin .75s linear infinite;
+}
+.err-icon { color: var(--danger); }
+.retry-btn {
+  padding: 7px 20px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: var(--primary-text);
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* ── Detail Modal ── */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: var(--overlay);
+  z-index: 500;
+  align-items: center;
+  justify-content: center;
+  padding: var(--gutter);
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  width: 100%;
+  max-width: 400px;
+  box-shadow: 0 8px 32px rgba(0,0,0,.22);
+  animation: slide-up .18s ease;
+  overflow: hidden;
+}
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(14px); }
+}
+.modal-head {
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.modal-icon {
+  width: 42px; height: 42px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: #fff;
+}
+.modal-head-text { flex: 1; min-width: 0; }
+.modal-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-bright);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.modal-sub { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+.modal-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-dim);
+  padding: 5px;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.modal-close:hover { background: var(--surface2); color: var(--text); }
+.modal-body { padding: 14px 20px; }
+.detail-row {
+  display: flex;
+  align-items: baseline;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--border);
+  gap: 10px;
+}
+.detail-row:last-child { border-bottom: none; }
+.detail-key {
+  font-size: 11px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  font-weight: 600;
+  width: 108px;
+  flex-shrink: 0;
+}
+.detail-val {
+  font-size: 13px;
+  color: var(--text);
+  font-weight: 500;
+  word-break: break-all;
+}
+a.dlink {
+  color: var(--accent);
+  text-decoration: none;
+}
+a.dlink:hover { text-decoration: underline; }
+.spill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 99px;
+}
+.spill-ok  { background: var(--pill-ok-bg);  color: var(--pill-ok-text); }
+.spill-off { background: var(--pill-off-bg); color: var(--pill-off-text); }
+.modal-actions {
+  padding: 10px 20px 18px;
+  display: flex;
+  gap: 8px;
+}
+.act-btn {
+  flex: 1;
+  padding: 8px 10px;
+  border-radius: 9px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: background .15s, border-color .15s, color .15s;
+}
+.act-btn:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--primary-text);
+}
+
+/* ── Toast ── */
+#toast-wrap {
+  position: fixed;
+  bottom: 18px;
+  right: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 999;
+}
+.toast {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--success);
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-size: 13px;
+  color: var(--text);
+  box-shadow: var(--shadow);
+  animation: slide-up .2s ease;
+  max-width: 300px;
+}
+.toast.err { border-left-color: var(--danger); }
+
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+</style>
+</head>
+<body data-theme="light">
+
+<!-- Header -->
+<header>
+  <div class="logo">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <rect x="1" y="1" width="6" height="6" rx="1.5"/>
+      <rect x="17" y="1" width="6" height="6" rx="1.5"/>
+      <rect x="9" y="17" width="6" height="6" rx="1.5"/>
+      <path d="M4 7v5h16V7M12 12v5"/>
+    </svg>
+    FritzBox Network
+  </div>
+  <div class="header-right">
+    <span class="status-pill pill-ok" id="conn-status">
+      <span class="dot"></span>
+      <span id="conn-text">Verbunden</span>
+    </span>
+    <button class="theme-btn" onclick="toggleTheme()" title="Design wechseln">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+      </svg>
+    </button>
+  </div>
+</header>
+
+<!-- App body -->
+<div class="app-body">
+
+  <!-- Sidebar -->
+  <nav class="sidebar">
+
+    <div class="sb-section">
+      <div class="sb-label">Anzeige</div>
+
+      <div class="toggle-row">
+        <span>Namen anzeigen</span>
+        <label class="toggle on" id="tog-names">
+          <input type="checkbox" checked onchange="onToggle('names', this)">
+          <span class="toggle-knob"></span>
+        </label>
+      </div>
+
+      <div class="toggle-row">
+        <span>IPs anzeigen</span>
+        <label class="toggle" id="tog-ips">
+          <input type="checkbox" onchange="onToggle('ips', this)">
+          <span class="toggle-knob"></span>
+        </label>
+      </div>
+
+      <div class="toggle-row">
+        <span>Inaktive anzeigen</span>
+        <label class="toggle on" id="tog-inactive">
+          <input type="checkbox" checked onchange="onToggle('inactive', this)">
+          <span class="toggle-knob"></span>
+        </label>
+      </div>
+    </div>
+
+    <div class="sb-section">
+      <div class="sb-label">Legende</div>
+      <div class="legend-row"><span class="legend-dot d-router"></span>Router / FritzBox</div>
+      <div class="legend-row"><span class="legend-dot d-lan"></span>LAN / Switch</div>
+      <div class="legend-row"><span class="legend-dot d-wlan"></span>WLAN</div>
+    </div>
+
+    <div class="sb-section">
+      <div class="sb-label">Statistik</div>
+      <div class="stat-row"><span>Gesamt</span>   <span class="stat-val" id="s-total">—</span></div>
+      <div class="stat-row"><span style="color:var(--success)">Aktiv</span>  <span class="stat-val" id="s-active" style="color:var(--success)">—</span></div>
+      <div class="stat-row"><span style="color:var(--text-dim)">Inaktiv</span><span class="stat-val" id="s-inactive" style="color:var(--text-dim)">—</span></div>
+      <div class="stat-row"><span style="color:var(--col-wlan)">WLAN</span>  <span class="stat-val" id="s-wlan" style="color:var(--col-wlan)">—</span></div>
+      <div class="stat-row"><span style="color:var(--col-lan)">LAN</span>    <span class="stat-val" id="s-lan"  style="color:var(--col-lan)">—</span></div>
+    </div>
+
+    <button class="btn-refresh" id="btn-refresh" onclick="doRefresh()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <polyline points="23 4 23 10 17 10"/>
+        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+      </svg>
+      Aktualisieren
+    </button>
+
+  </nav>
+
+  <!-- Graph -->
+  <div class="graph-area">
+    <div class="overlay-msg" id="msg-loading">
+      <div class="spinner-lg"></div>
+      Netzwerk wird geladen…
+    </div>
+    <div class="overlay-msg has-btn" id="msg-error" style="display:none">
+      <svg class="err-icon" width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <circle cx="12" cy="12" r="10"/>
+        <line x1="12" y1="8" x2="12" y2="12"/>
+        <line x1="12" y1="16" x2="12.01" y2="16" stroke-width="2"/>
+      </svg>
+      <span id="msg-error-text">Verbindung fehlgeschlagen</span>
+      <button class="retry-btn" onclick="loadNetwork()">Erneut versuchen</button>
+    </div>
+    <svg id="graph-svg"></svg>
+  </div>
+
+</div>
+
+<!-- Detail Modal -->
+<div class="modal-overlay" id="modal" onclick="closeModal(event)">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-icon" id="m-icon">F</div>
+      <div class="modal-head-text">
+        <div class="modal-title" id="m-title">Gerät</div>
+        <div class="modal-sub"   id="m-sub">LAN-Gerät</div>
+      </div>
+      <button class="modal-close" onclick="closeModal()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+    <div class="modal-body"    id="m-body"></div>
+    <div class="modal-actions" id="m-actions"></div>
+  </div>
+</div>
+
+<div id="toast-wrap"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+<script>
+/* ── Config ── */
+const NODE_R   = { router: 24, switch: 18, lan: 14, wlan: 13 };
+const NODE_COL = {
+  get router() { return cssVar('--col-router'); },
+  get switch() { return cssVar('--col-switch'); },
+  get lan()    { return cssVar('--col-lan');    },
+  get wlan()   { return cssVar('--col-wlan');   },
+};
+const TYPE_LABEL = { router: 'Router / FritzBox', switch: 'Switch', lan: 'LAN-Gerät', wlan: 'WLAN-Gerät' };
+const TYPE_LETTER = { router: 'F', switch: 'S', lan: 'L', wlan: 'W' };
+
+function cssVar(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
+/* ── State ── */
+let graphData   = null;
+let simulation  = null;
+let showNames   = true;
+let showIPs     = false;
+let showInact   = true;
+
+/* ── Theme ── */
+function toggleTheme() {
+  const dark = document.body.getAttribute('data-theme') !== 'dark';
+  document.body.setAttribute('data-theme', dark ? 'dark' : 'light');
+  if (graphData) renderGraph(graphData);
+}
+
+/* ── Toggle handlers ── */
+function onToggle(key, el) {
+  const lbl = el.closest('.toggle');
+  lbl.classList.toggle('on', el.checked);
+  if (key === 'names')    { showNames = el.checked; updateLabels(); }
+  if (key === 'ips')      { showIPs   = el.checked; updateLabels(); }
+  if (key === 'inactive') { showInact = el.checked; renderGraph(graphData); }
+}
+function updateLabels() {
+  d3.selectAll('.lbl-name').attr('display', showNames ? null : 'none');
+  d3.selectAll('.lbl-ip').attr('display',   showIPs   ? null : 'none');
+}
+
+/* ── Data ── */
+async function loadNetwork() {
+  showMsg('loading');
+  try {
+    const r = await fetch('./api/network');
+    const d = await r.json();
+    if (d.error) throw new Error(d.error);
+    graphData = d;
+    updateStats(d);
+    renderGraph(d);
+    setStatus(true);
+    hideMsg();
+  } catch(e) {
+    setStatus(false, e.message);
+    showMsg('error', e.message);
+  }
+}
+
+async function doRefresh() {
+  const btn = document.getElementById('btn-refresh');
+  btn.disabled = true;
+  btn.innerHTML = `<span class="spin spinner-sm"></span> Lädt…`;
+  try {
+    const r = await fetch('./api/refresh', { method: 'POST' });
+    const d = await r.json();
+    if (d.error) throw new Error(d.error);
+    graphData = d;
+    updateStats(d);
+    renderGraph(d);
+    setStatus(true);
+    toast('Netzwerk aktualisiert');
+  } catch(e) {
+    toast(e.message, true);
+    setStatus(false, e.message);
+  }
+  btn.disabled = false;
+  btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Aktualisieren`;
+}
+
+function updateStats(d) {
+  const h = d.nodes.filter(n => n.type !== 'router');
+  const active = h.filter(n => n.active).length;
+  setText('s-total',   h.length);
+  setText('s-active',  active);
+  setText('s-inactive', h.length - active);
+  setText('s-wlan', h.filter(n => n.type === 'wlan').length);
+  setText('s-lan',  h.filter(n => n.type !== 'wlan').length);
+}
+function setText(id, v) { document.getElementById(id).textContent = v; }
+
+/* ── Graph ── */
+function renderGraph(data) {
+  const svg = d3.select('#graph-svg');
+  svg.selectAll('*').remove();
+  if (!data || !data.nodes.length) return;
+
+  const W = svg.node().clientWidth  || 900;
+  const H = svg.node().clientHeight || 600;
+
+  const visNodes = data.nodes.filter(n => showInact || n.active);
+  const visIds   = new Set(visNodes.map(n => n.id));
+  const visLinks = data.links.filter(l =>
+    visIds.has(l.source?.id ?? l.source) && visIds.has(l.target?.id ?? l.target)
+  );
+  const nodes = visNodes.map(n => ({ ...n }));
+  const links = visLinks.map(l => ({ ...l }));
+
+  const rootNode = nodes.find(n => n.type === 'router');
+  if (rootNode) { rootNode.fx = W / 2; rootNode.fy = H / 2; }
+
+  const g = svg.append('g');
+
+  const zoom = d3.zoom().scaleExtent([0.15, 5])
+    .on('zoom', e => g.attr('transform', e.transform));
+  svg.call(zoom);
+  svg.on('dblclick.zoom', null);
+
+  /* Links */
+  const link = g.append('g').attr('class', 'links')
+    .selectAll('line').data(links).join('line')
+    .attr('class', 'link')
+    .attr('stroke', d => {
+      const tid = d.target?.id ?? d.target;
+      const t = nodes.find(n => n.id === tid);
+      if (!t) return cssVar('--border');
+      return NODE_COL[t.type] ?? cssVar('--border');
+    });
+
+  /* Nodes */
+  const node = g.append('g').attr('class', 'nodes')
+    .selectAll('g').data(nodes).join('g')
+    .attr('class', d => `node ${d.active ? 'active' : 'inactive'}`)
+    .call(d3.drag()
+      .on('start', (e, d) => { if (!e.active) sim.alphaTarget(.3).restart(); d.fx = d.x; d.fy = d.y; })
+      .on('drag',  (e, d) => { d.fx = e.x; d.fy = e.y; })
+      .on('end',   (e, d) => { if (!e.active) sim.alphaTarget(0); if (d.type !== 'router') { d.fx = null; d.fy = null; } })
+    )
+    .on('click', (ev, d) => { ev.stopPropagation(); openModal(d); });
+
+  /* Circle */
+  node.append('circle')
+    .attr('r',            d => NODE_R[d.type] ?? 14)
+    .attr('fill',         d => NODE_COL[d.type] ?? cssVar('--col-lan'))
+    .attr('stroke',       d => NODE_COL[d.type] ?? cssVar('--col-lan'))
+    .attr('fill-opacity', d => d.active ? 1 : 0.25)
+    .attr('stroke-opacity', d => d.active ? 0.8 : 0.4);
+
+  /* Letter icon */
+  node.append('text')
+    .attr('text-anchor', 'middle').attr('dominant-baseline', 'central')
+    .attr('fill', 'white')
+    .attr('font-size', d => Math.round((NODE_R[d.type] ?? 14) * 0.75))
+    .attr('font-weight', '700')
+    .style('pointer-events', 'none')
+    .text(d => TYPE_LETTER[d.type] ?? '?');
+
+  /* Name label */
+  node.append('text')
+    .attr('class', 'lbl lbl-name')
+    .attr('text-anchor', 'middle')
+    .attr('dy', d => (NODE_R[d.type] ?? 14) + 14)
+    .attr('display', showNames ? null : 'none')
+    .text(d => d.name);
+
+  /* IP label */
+  node.append('text')
+    .attr('class', 'lbl lbl-ip')
+    .attr('text-anchor', 'middle')
+    .attr('dy', d => (NODE_R[d.type] ?? 14) + 26)
+    .attr('display', showIPs ? null : 'none')
+    .text(d => d.ip);
+
+  /* Simulation */
+  if (simulation) simulation.stop();
+  simulation = sim = d3.forceSimulation(nodes)
+    .force('link',      d3.forceLink(links).id(d => d.id).distance(130).strength(0.9))
+    .force('charge',    d3.forceManyBody().strength(-320))
+    .force('collision', d3.forceCollide().radius(d => (NODE_R[d.type] ?? 14) + 32))
+    .on('tick', () => {
+      link.attr('x1', d => d.source.x).attr('y1', d => d.source.y)
+          .attr('x2', d => d.target.x).attr('y2', d => d.target.y);
+      node.attr('transform', d => `translate(${d.x},${d.y})`);
+    });
+}
+let sim;
+
+/* ── Modal ── */
+function openModal(d) {
+  const col = NODE_COL[d.type] ?? cssVar('--col-lan');
+
+  document.getElementById('m-icon').style.background = col;
+  document.getElementById('m-icon').textContent = TYPE_LETTER[d.type] ?? '?';
+  document.getElementById('m-title').textContent = d.name;
+  document.getElementById('m-sub').textContent   = TYPE_LABEL[d.type] ?? 'Gerät';
+
+  const rows = [];
+
+  rows.push({ k: 'Status', v: d.active
+    ? `<span class="spill spill-ok"><span class="dot"></span> Online</span>`
+    : `<span class="spill spill-off"><span class="dot"></span> Offline</span>`,
+    raw: true });
+
+  if (d.ip)
+    rows.push({ k: 'IP-Adresse', v: `<a class="dlink" href="http://${esc(d.ip)}" target="_blank" rel="noopener">${esc(d.ip)}</a>`, raw: true });
+
+  rows.push({ k: 'Hostname', v: d.name
+    ? `<a class="dlink" href="smb://${esc(d.name)}" target="_blank" rel="noopener">${esc(d.name)}</a>`
+    : '—', raw: true });
+
+  if (d.mac)            rows.push({ k: 'MAC-Adresse',    v: d.mac });
+  if (d.interface)      rows.push({ k: 'Verbindungstyp', v: d.interface === '802.11' ? 'WLAN (802.11)' : d.interface });
+  if (d.speed != null)  rows.push({ k: 'Geschwindigkeit',v: `${d.speed} Mbit/s` });
+  if (d.address_source) rows.push({ k: 'IP-Vergabe',     v: d.address_source });
+
+  document.getElementById('m-body').innerHTML = rows.map(r => `
+    <div class="detail-row">
+      <span class="detail-key">${r.k}</span>
+      <span class="detail-val">${r.raw ? r.v : esc(r.v)}</span>
+    </div>`).join('');
+
+  const acts = [];
+  if (d.ip) {
+    acts.push(`<a class="act-btn" href="http://${esc(d.ip)}" target="_blank" rel="noopener">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/>
+        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+      </svg>Web-Oberfläche</a>`);
+    acts.push(`<a class="act-btn" href="smb://${esc(d.ip)}" target="_blank" rel="noopener">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+      </svg>SMB-Freigabe</a>`);
+  }
+  document.getElementById('m-actions').innerHTML = acts.join('');
+  document.getElementById('modal').classList.add('open');
+}
+
+function closeModal(ev) {
+  if (!ev || ev.target === document.getElementById('modal'))
+    document.getElementById('modal').classList.remove('open');
+}
+
+/* ── Status / Messages ── */
+function setStatus(ok, msg) {
+  const el = document.getElementById('conn-status');
+  const tx = document.getElementById('conn-text');
+  el.className = 'status-pill ' + (ok ? 'pill-ok' : 'pill-off');
+  tx.textContent = ok ? 'Verbunden' : 'Fehler';
+}
+function showMsg(type, txt) {
+  document.getElementById('msg-loading').style.display = type === 'loading' ? 'flex' : 'none';
+  document.getElementById('msg-error').style.display   = type === 'error'   ? 'flex' : 'none';
+  if (txt) document.getElementById('msg-error-text').textContent = txt;
+}
+function hideMsg() {
+  document.getElementById('msg-loading').style.display = 'none';
+  document.getElementById('msg-error').style.display   = 'none';
+}
+
+/* ── Toast ── */
+function toast(msg, err = false) {
+  const t = document.createElement('div');
+  t.className = 'toast' + (err ? ' err' : '');
+  t.textContent = msg;
+  document.getElementById('toast-wrap').appendChild(t);
+  setTimeout(() => t.remove(), 3500);
+}
+
+/* ── Util ── */
+function esc(s) {
+  return String(s ?? '')
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* ── Init ── */
+loadNetwork();
+</script>
+</body>
+</html>

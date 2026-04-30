@@ -1,0 +1,31 @@
+name: "FritzBox Network"
+description: "Netzwerk-Topologie-Visualizer für FritzBox – alle Netzwerkteilnehmer als interaktiver Kraft-Graph"
+version: "1.0.00"
+url: "https://github.com/gregorwolf1973/fritz-network-addon"
+slug: "fritzbox_network"
+init: false
+arch:
+  - aarch64
+  - amd64
+  - armv7
+startup: application
+boot: auto
+ingress: true
+ingress_port: 8300
+panel_icon: "mdi:router-network"
+panel_title: "FritzBox Network"
+host_network: true
+options:
+  fritzbox_host: "192.168.178.1"
+  fritzbox_port: 49000
+  fritzbox_user: ""
+  fritzbox_password: ""
+  web_port: 8300
+  cache_ttl: 30
+schema:
+  fritzbox_host: str
+  fritzbox_port: port
+  fritzbox_user: str
+  fritzbox_password: str
+  web_port: port
+  cache_ttl: int
