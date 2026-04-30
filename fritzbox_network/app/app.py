@@ -158,20 +158,42 @@ def _fetch_fresh() -> dict:
         return {"error": str(exc), "nodes": [], "links": [],
                 "mesh_links": [], "has_mesh": False}
 
+    # ── Fetch mesh JSON first so we know the master's MAC + real name ──────
+    mesh_json  = _fetch_mesh_json(fc)
+    master_mac = ""
+    master_name = "FRITZ!Box"
+    if mesh_json:
+        for mnode in mesh_json.get("nodes", []):
+            if mnode.get("mesh_role") == "master":
+                master_mac  = _norm_mac(mnode.get("device_mac_address", ""))
+                master_name = (mnode.get("device_friendly_name")
+                               or mnode.get("device_name")
+                               or "FRITZ!Box")
+                break
+
     # ── Build node list ────────────────────────────────────────────────────
     root = {
-        "id": "fritzbox_root", "name": "FRITZ!Box", "ip": FRITZ_HOST,
-        "mac": "", "type": "router", "active": True,
+        "id": "fritzbox_root", "name": master_name, "ip": FRITZ_HOST,
+        "mac": master_mac, "type": "router", "active": True,
         "interface": "Router", "speed": None, "address_source": "",
         "mesh_role": "master",
     }
     nodes: list[dict] = [root]
-    mac_to_id: dict[str, str] = {}   # normalized MAC → graph node_id
+    # Pre-register master MAC so hosts loop skips it and mesh links work
+    mac_to_id: dict[str, str] = {}
+    if master_mac:
+        mac_to_id[master_mac] = "fritzbox_root"
 
     for host in raw_hosts:
         mac = _norm_mac(host.get("mac") or "")
         ip  = host.get("ip") or ""
         if not mac and not ip:
+            continue
+        # Skip the master FritzBox itself (already represented as root node)
+        if mac and mac == master_mac:
+            continue
+        # Also skip if IP matches FritzBox IP and no MAC conflict
+        if ip == FRITZ_HOST and not mac:
             continue
 
         node_id   = "h_" + (mac.replace(":", "") if mac else ip.replace(".", "_"))
@@ -207,8 +229,7 @@ def _fetch_fresh() -> dict:
         for n in nodes[1:]
     ]
 
-    # ── Mesh topology ──────────────────────────────────────────────────────
-    mesh_json = _fetch_mesh_json(fc)
+    # ── Mesh topology (mesh_json already fetched above) ────────────────────
 
     if mesh_json:
         for mnode in mesh_json.get("nodes", []):
