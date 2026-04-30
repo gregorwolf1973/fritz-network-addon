@@ -711,7 +711,24 @@ function renderGraph(data) {
 
   // Choose link set
   const useMesh = topoMode === 'mesh' && data.has_mesh && data.mesh_links?.length;
-  const rawLinks = useMesh ? data.mesh_links : data.links;
+  let rawLinks;
+  if (useMesh) {
+    // mesh_links covers router↔repeater backhaul connections.
+    // Regular client devices are NOT in the mesh JSON, so we add the flat
+    // star-links for any node that has no mesh link as source or target.
+    const meshLinkedIds = new Set();
+    data.mesh_links.forEach(l => {
+      meshLinkedIds.add(l.source?.id ?? l.source);
+      meshLinkedIds.add(l.target?.id ?? l.target);
+    });
+    const clientFlatLinks = data.links.filter(l => {
+      const tid = l.target?.id ?? l.target;
+      return !meshLinkedIds.has(tid);
+    });
+    rawLinks = [...data.mesh_links, ...clientFlatLinks];
+  } else {
+    rawLinks = data.links;
+  }
 
   // Filter inactive nodes
   const visNodes = data.nodes.filter(n => showInact || n.active);
