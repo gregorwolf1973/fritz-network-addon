@@ -31,7 +31,8 @@ def _norm_mac(mac: str) -> str:
 
 def _device_type(hostname: str, interface: str, mesh_role: str = "") -> str:
     hn = (hostname or "").lower()
-    if mesh_role == "master" or "fritz" in hn:
+    # mesh_role is authoritative – never rely on hostname for router/repeater
+    if mesh_role == "master":
         return "router"
     if mesh_role == "slave":
         return "repeater"
@@ -249,27 +250,46 @@ def _fetch_fresh() -> dict:
                             gn["mesh_role"] = "slave"
                             break
                 else:
-                    # Repeater not in hosts list → add as new node
-                    ip = ""
-                    for ip_e in mnode.get("ip_addresses", []):
-                        if ip_e.get("version") == "V4" and "MANAGEMENT" in ip_e.get("attributes", []):
-                            ip = ip_e.get("value", "").split("/")[0]
-                            break
-                    name    = mnode.get("device_friendly_name") or mnode.get("device_name") or "Repeater"
-                    node_id = "m_" + mac.replace(":", "") if mac else f"m_{mnode.get('uid','x')}"
-                    nodes.append({
-                        "id": node_id, "name": name, "ip": ip, "mac": mac,
-                        "type": "repeater", "active": True,
-                        "interface": "LAN", "speed": None, "address_source": "",
-                        "mesh_role": "slave",
-                    })
-                    if mac:
-                        mac_to_id[mac] = node_id
-                    # Also add flat link for star view
-                    flat_links.append({
-                        "source": "fritzbox_root", "target": node_id,
-                        "link_type": "flat", "speed_rx": None, "speed_tx": None,
-                    })
+                    # Try name-based matching (covers devices whose MAC differs in hosts list)
+                    slave_name = (mnode.get("device_friendly_name")
+                                  or mnode.get("device_name") or "").lower()
+                    matched_gn = None
+                    if slave_name:
+                        for gn in nodes[1:]:
+                            gn_name = gn["name"].lower()
+                            if (gn_name == slave_name
+                                    or gn_name.replace(".", "-") == slave_name
+                                    or gn_name.replace("-", ".") == slave_name):
+                                matched_gn = gn
+                                break
+                    if matched_gn:
+                        if mac:
+                            mac_to_id[mac] = matched_gn["id"]
+                            matched_gn["mac"] = mac  # fill in the real MAC
+                        matched_gn["type"]      = "repeater"
+                        matched_gn["mesh_role"] = "slave"
+                    else:
+                        # Repeater not in hosts list → add as new node
+                        ip = ""
+                        for ip_e in mnode.get("ip_addresses", []):
+                            if ip_e.get("version") == "V4" and "MANAGEMENT" in ip_e.get("attributes", []):
+                                ip = ip_e.get("value", "").split("/")[0]
+                                break
+                        name    = mnode.get("device_friendly_name") or mnode.get("device_name") or "Repeater"
+                        node_id = "m_" + mac.replace(":", "") if mac else f"m_{mnode.get('uid','x')}"
+                        nodes.append({
+                            "id": node_id, "name": name, "ip": ip, "mac": mac,
+                            "type": "repeater", "active": True,
+                            "interface": "LAN", "speed": None, "address_source": "",
+                            "mesh_role": "slave",
+                        })
+                        if mac:
+                            mac_to_id[mac] = node_id
+                        # Also add flat link for star view
+                        flat_links.append({
+                            "source": "fritzbox_root", "target": node_id,
+                            "link_type": "flat", "speed_rx": None, "speed_tx": None,
+                        })
 
     mesh_links, has_mesh = _build_mesh_links(mesh_json, mac_to_id)
 
