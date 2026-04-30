@@ -5,6 +5,7 @@ import time
 import json
 import logging
 import urllib.request
+import xml.etree.ElementTree as ET
 from flask import Flask, jsonify, render_template
 
 logging.basicConfig(level=logging.INFO)
@@ -63,6 +64,47 @@ def _fetch_mesh_json(fc) -> dict | None:
         return None
 
 
+def _fetch_hostlist_xml(fc) -> dict:
+    """
+    Call X_AVM-DE_GetHostListPath and parse the returned XML.
+
+    Returns: normalised_mac → {
+        "ap_mac":  str   – MAC of associated AP (WiFi only, else ""),
+        "port":    int   – FritzBox LAN port number (1-4, 0 = unknown),
+        "speed":   int|None  – link speed in Mbit/s,
+    }
+
+    The ap_mac field tells us which Fritz mesh node a WiFi client is
+    connected to.  Ethernet devices that share a port number with a
+    switch node are physically behind that switch.
+    """
+    out: dict = {}
+    try:
+        r    = fc.call_action("Hosts1", "X_AVM-DE_GetHostListPath")
+        path = r.get("NewX_AVM-DE_HostListPath", "")
+        if not path:
+            return out
+        url = f"http://{FRITZ_HOST}:{FRITZ_PORT}{path}"
+        with urllib.request.urlopen(url, timeout=10) as resp:
+            xml_bytes = resp.read()
+        root_el = ET.fromstring(xml_bytes)
+        for item in root_el.findall("Item"):
+            mac = _norm_mac(item.findtext("MACAddress") or "")
+            if not mac:
+                continue
+            ap_mac  = _norm_mac(item.findtext("X_AVM-DE_AssociatedDeviceMAC") or "")
+            port_s  = (item.findtext("X_AVM-DE_Port") or "0").strip()
+            speed_s = (item.findtext("X_AVM-DE_Speed") or "").strip()
+            out[mac] = {
+                "ap_mac": ap_mac,
+                "port":   int(port_s) if port_s.isdigit() else 0,
+                "speed":  int(speed_s) if speed_s.isdigit() else None,
+            }
+    except Exception as exc:
+        log.warning("HostList-XML nicht verfügbar: %s", exc)
+    return out
+
+
 def _kbits_to_mbit(val) -> int | None:
     """Convert kbit/s (as returned by mesh JSON) to Mbit/s."""
     if val is None:
@@ -97,7 +139,6 @@ def _build_mesh_links(mesh_json: dict | None, mac_to_id: dict) -> tuple[list, bo
             nuid_to_gid[nuid] = "fritzbox_root"
         elif mac and mac in mac_to_id:
             nuid_to_gid[nuid] = mac_to_id[mac]
-        # slaves not yet in hosts list are handled in _fetch_fresh()
 
     # ── Step 2: collect all unique links (dedupe by link uid "nl-*") ──────
     seen_link_uids: set[str] = set()
@@ -159,9 +200,11 @@ def _fetch_fresh() -> dict:
         return {"error": str(exc), "nodes": [], "links": [],
                 "mesh_links": [], "has_mesh": False}
 
-    # ── Fetch mesh JSON first so we know the master's MAC + real name ──────
-    mesh_json  = _fetch_mesh_json(fc)
-    master_mac = ""
+    # ── Fetch mesh JSON + host-list XML (parallel context data) ───────────
+    mesh_json    = _fetch_mesh_json(fc)
+    hostlist_info = _fetch_hostlist_xml(fc)   # mac → {ap_mac, port, speed}
+
+    master_mac  = ""
     master_name = "FRITZ!Box"
     if mesh_json:
         for mnode in mesh_json.get("nodes", []):
@@ -202,16 +245,8 @@ def _fetch_fresh() -> dict:
         name      = host.get("name") or ip or "Unbekannt"
         active    = bool(host.get("status", False))
 
-        # Try to read per-host link speed
-        speed = None
-        if mac:
-            try:
-                res   = fc.call_action("Hosts1", "GetSpecificHostEntry", NewMACAddress=mac)
-                raw_s = res.get("NewX_AVM-DE_Speed")
-                if isinstance(raw_s, int) and 0 < raw_s < 100_000:
-                    speed = raw_s
-            except Exception:
-                pass
+        # Speed from host-list XML (faster than per-host TR-064 call)
+        speed = hostlist_info.get(mac, {}).get("speed") if mac else None
 
         nodes.append({
             "id": node_id, "name": name, "ip": ip, "mac": mac,
@@ -223,15 +258,8 @@ def _fetch_fresh() -> dict:
         if mac:
             mac_to_id[mac] = node_id
 
-    # ── Flat star links ────────────────────────────────────────────────────
-    flat_links = [
-        {"source": "fritzbox_root", "target": n["id"],
-         "link_type": "flat", "speed_rx": n.get("speed"), "speed_tx": None}
-        for n in nodes[1:]
-    ]
-
-    # ── Mesh topology (mesh_json already fetched above) ────────────────────
-
+    # ── Promote slave mesh nodes (repeaters) ──────────────────────────────
+    # Do this BEFORE building flat_links so repeaters get the right parent.
     if mesh_json:
         for mnode in mesh_json.get("nodes", []):
             role = mnode.get("mesh_role", "")
@@ -241,27 +269,38 @@ def _fetch_fresh() -> dict:
                 continue  # already handled as fritzbox_root
 
             if role == "slave":
-                # Update existing host node OR create new repeater node
                 gid = mac_to_id.get(mac)
                 if gid:
+                    # Found by MAC → promote to repeater
                     for gn in nodes:
                         if gn["id"] == gid:
                             gn["type"]      = "repeater"
                             gn["mesh_role"] = "slave"
                             break
                 else:
-                    # Try name-based matching (covers devices whose MAC differs in hosts list)
-                    slave_name = (mnode.get("device_friendly_name")
-                                  or mnode.get("device_name") or "").lower()
+                    # Try name-based matching:
+                    # collect all name variants from the mesh node
+                    slave_name_candidates: set[str] = set()
+                    for key in ("device_friendly_name", "device_name"):
+                        v = (mnode.get(key) or "").strip().lower()
+                        if v:
+                            slave_name_candidates.add(v)
+                            slave_name_candidates.add(v.replace(".", "-"))
+                            slave_name_candidates.add(v.replace("-", "."))
+
                     matched_gn = None
-                    if slave_name:
+                    if slave_name_candidates:
                         for gn in nodes[1:]:
                             gn_name = gn["name"].lower()
-                            if (gn_name == slave_name
-                                    or gn_name.replace(".", "-") == slave_name
-                                    or gn_name.replace("-", ".") == slave_name):
+                            gn_variants = {
+                                gn_name,
+                                gn_name.replace(".", "-"),
+                                gn_name.replace("-", "."),
+                            }
+                            if slave_name_candidates & gn_variants:
                                 matched_gn = gn
                                 break
+
                     if matched_gn:
                         if mac:
                             mac_to_id[mac] = matched_gn["id"]
@@ -270,33 +309,73 @@ def _fetch_fresh() -> dict:
                         matched_gn["mesh_role"] = "slave"
                     else:
                         # Repeater not in hosts list → add as new node
-                        ip = ""
+                        node_ip = ""
                         for ip_e in mnode.get("ip_addresses", []):
                             if ip_e.get("version") == "V4" and "MANAGEMENT" in ip_e.get("attributes", []):
-                                ip = ip_e.get("value", "").split("/")[0]
+                                node_ip = ip_e.get("value", "").split("/")[0]
                                 break
-                        name    = mnode.get("device_friendly_name") or mnode.get("device_name") or "Repeater"
-                        node_id = "m_" + mac.replace(":", "") if mac else f"m_{mnode.get('uid','x')}"
+                        rep_name = (mnode.get("device_friendly_name")
+                                    or mnode.get("device_name") or "Repeater")
+                        node_id  = ("m_" + mac.replace(":", "")) if mac else f"m_{mnode.get('uid','x')}"
                         nodes.append({
-                            "id": node_id, "name": name, "ip": ip, "mac": mac,
+                            "id": node_id, "name": rep_name, "ip": node_ip, "mac": mac,
                             "type": "repeater", "active": True,
                             "interface": "LAN", "speed": None, "address_source": "",
                             "mesh_role": "slave",
                         })
                         if mac:
                             mac_to_id[mac] = node_id
-                        # Also add flat link for star view
-                        flat_links.append({
-                            "source": "fritzbox_root", "target": node_id,
-                            "link_type": "flat", "speed_rx": None, "speed_tx": None,
-                        })
+
+    # ── Smart flat links ───────────────────────────────────────────────────
+    # Built AFTER slave promotion so repeaters are already identified.
+    #
+    # Priority for parent selection:
+    #  1. WiFi client → ap_mac from host-list XML (= the AP/repeater it connected to)
+    #  2. LAN client  → same FritzBox port as a known switch node
+    #  3. Fallback    → fritzbox_root (star topology)
+
+    # Build port → switch_node_id map from the switch nodes we know about
+    port_to_switch: dict[int, str] = {}
+    for n in nodes:
+        if n["type"] == "switch" and n.get("mac"):
+            info = hostlist_info.get(n["mac"], {})
+            p    = info.get("port", 0)
+            if p > 0:
+                port_to_switch[p] = n["id"]
+
+    flat_links: list[dict] = []
+    for n in nodes[1:]:
+        parent_id = "fritzbox_root"
+        mac = n.get("mac", "")
+        if mac:
+            info   = hostlist_info.get(mac, {})
+            ap_mac = info.get("ap_mac", "")
+            port   = info.get("port", 0)
+            if ap_mac and ap_mac in mac_to_id:
+                # WiFi: connect to the AP/repeater it's associated with
+                ap_id = mac_to_id[ap_mac]
+                if ap_id != n["id"]:          # avoid self-loop
+                    parent_id = ap_id
+            elif n["type"] not in ("repeater",) and port > 0 and port in port_to_switch:
+                # LAN: same port as a switch → route through switch
+                sw_id = port_to_switch[port]
+                if sw_id != n["id"]:          # don't make switch its own parent
+                    parent_id = sw_id
+
+        flat_links.append({
+            "source":    parent_id,
+            "target":    n["id"],
+            "link_type": "flat",
+            "speed_rx":  n.get("speed"),
+            "speed_tx":  None,
+        })
 
     mesh_links, has_mesh = _build_mesh_links(mesh_json, mac_to_id)
 
     return {
         "nodes":      nodes,
-        "links":      flat_links,   # star topology
-        "mesh_links": mesh_links,   # real topology
+        "links":      flat_links,   # star/smart topology
+        "mesh_links": mesh_links,   # real mesh topology
         "has_mesh":   has_mesh,
     }
 
