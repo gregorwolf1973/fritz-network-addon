@@ -796,7 +796,7 @@ function renderGraph(data) {
     const x = saved?.x ?? prevPos[n.id]?.x ?? W/2 + (Math.random()-0.5)*80;
     const y = saved?.y ?? prevPos[n.id]?.y ?? H/2 + (Math.random()-0.5)*80;
     const node = { ...n, x, y };
-    if (saved && n.type !== 'router') { node.fx = saved.x; node.fy = saved.y; }
+    if (saved) { node.fx = saved.x; node.fy = saved.y; }
     return node;
   });
   curLinks = visLinks.map(l => ({ ...l }));
@@ -817,9 +817,9 @@ function renderGraph(data) {
     }
   });
 
-  // FritzBox always centered (pin for force mode)
+  // FritzBox centered only if no saved position
   const root = curNodes.find(n => n.type === 'router');
-  if (root && dirMode === 'force') { root.fx = W/2; root.fy = H/2; }
+  if (root && dirMode === 'force' && !savedLayout[root.id]) { root.fx = W/2; root.fy = H/2; }
 
   const g = svg.append('g');
   const zoom = d3.zoom().scaleExtent([0.12, 5])
@@ -864,7 +864,6 @@ function renderGraph(data) {
     .on('click',   (ev,d) => { ev.stopPropagation(); openModal(d); })
     .on('dblclick',(ev,d) => {
       ev.stopPropagation();
-      if (d.type === 'router') return;
       d.fx = null; d.fy = null;
       removeNodePosition(d.id);       // unpin → forget saved position
       simulation?.alpha(0.3).restart();
@@ -941,7 +940,7 @@ function applyForceLayout(W, H, tick) {
     }
   });
   const root = curNodes.find(n => n.type === 'router');
-  if (root) { root.fx = W/2; root.fy = H/2; }
+  if (root && !savedLayout[root.id]) { root.fx = W/2; root.fy = H/2; }
 
   const linkDist = topoMode === 'mesh' ? 70 : 110;
 
@@ -1038,6 +1037,17 @@ function computeTreePositions(W, H) {
 /* ──────────────────────────────────────────────────────────────────
    Detail Modal
    ────────────────────────────────────────────────────────────────── */
+function signalBar(pct) {
+  const bars = 5;
+  const filled = Math.round((pct / 100) * bars);
+  const col = pct >= 70 ? 'var(--success)' : pct >= 40 ? 'var(--warn)' : 'var(--danger)';
+  const html = Array.from({length: bars}, (_, i) =>
+    `<span style="display:inline-block;width:5px;height:${6+i*3}px;margin-right:2px;border-radius:2px;
+      background:${i < filled ? col : 'var(--border)'}"></span>`
+  ).join('');
+  return `<span style="vertical-align:middle">${html}</span> <span style="color:${col}">${pct}%</span>`;
+}
+
 function openModal(d) {
   const col = nodeCol(d.type);
   document.getElementById('m-icon').style.background = col;
@@ -1060,17 +1070,47 @@ function openModal(d) {
       ? `<a class="dlink" href="smb://${esc(d.name)}" target="_blank" rel="noopener">${esc(d.name)}</a>`
       : '—' });
 
-  if (d.mac)            rows.push({ k:'MAC-Adresse',     v:d.mac });
-  if (d.interface)      rows.push({ k:'Verbindungstyp',  v:d.interface === '802.11' ? 'WLAN (802.11)' : d.interface });
-  if (d.speed != null)  rows.push({ k:'Geschwindigkeit', v:`${d.speed} Mbit/s` });
-  if (d.mesh_role)      rows.push({ k:'Mesh-Rolle',      v:d.mesh_role === 'master' ? 'Master' : 'Slave (Repeater)' });
-  if (d.address_source) rows.push({ k:'IP-Vergabe',      v:d.address_source });
+  if (d.mac) {
+    rows.push({ k:'MAC-Adresse', v:d.mac });
+    // Hersteller – async lookup, placeholder updated after fetch
+    rows.push({ k:'Hersteller', raw:true,
+      v:`<span id="m-vendor" style="color:var(--text-dim)">Lädt…</span>` });
+  }
+
+  if (d.interface) {
+    let iface = d.interface === '802.11' ? 'WLAN (802.11)' : d.interface;
+    if (d.frequency) {
+      iface += ` · ${d.frequency >= 5000 ? '5 GHz' : '2,4 GHz'}`;
+    }
+    rows.push({ k:'Verbindung', v:iface });
+  }
+  if (d.signal != null)  rows.push({ k:'Signalstärke', raw:true, v: signalBar(d.signal) });
+  if (d.speed != null)   rows.push({ k:'Geschwindigkeit', v:`${d.speed} Mbit/s` });
+  if (d.ap_name)         rows.push({ k:'Verbunden über', v:d.ap_name });
+  if (d.mesh_role)       rows.push({ k:'Mesh-Rolle', v:d.mesh_role === 'master' ? 'Master' : 'Slave (Repeater)' });
+  if (d.address_source)  rows.push({ k:'IP-Vergabe', v:d.address_source });
 
   document.getElementById('m-body').innerHTML = rows.map(r => `
     <div class="detail-row">
       <span class="detail-key">${r.k}</span>
       <span class="detail-val">${r.raw ? r.v : esc(r.v)}</span>
     </div>`).join('');
+
+  // Async vendor lookup
+  if (d.mac) {
+    const oui = d.mac.replace(/:/g,'').substring(0,6).toUpperCase();
+    fetch(`https://api.macvendors.com/${encodeURIComponent(d.mac)}`)
+      .then(r => r.ok ? r.text() : Promise.reject())
+      .then(v => {
+        const el = document.getElementById('m-vendor');
+        if (el) el.textContent = v.trim() || '—';
+        if (el) el.style.color = '';
+      })
+      .catch(() => {
+        const el = document.getElementById('m-vendor');
+        if (el) { el.textContent = '—'; el.style.color = ''; }
+      });
+  }
 
   const acts = [];
   if (d.ip) {
@@ -1153,7 +1193,7 @@ function writeSavedLayout(map) {
   localStorage.setItem(LAYOUT_KEY, JSON.stringify(map));
 }
 function saveNodePosition(d) {
-  if (!d || d.type === 'router') return;
+  if (!d) return;
   const map = loadSavedLayout();
   map[d.id] = { x: d.x, y: d.y };
   writeSavedLayout(map);
@@ -1168,7 +1208,6 @@ function saveLayout() {
   if (!curNodes) return;
   const map = {};
   curNodes.forEach(n => {
-    if (n.type === 'router') return;
     map[n.id] = { x: n.x, y: n.y };
     n.fx = n.x; n.fy = n.y;          // pin so they stop moving immediately
   });
@@ -1181,9 +1220,7 @@ function saveLayout() {
    Reset layout (unpin all, clear storage, re-heat simulation)
    ────────────────────────────────────────────────────────────────── */
 function resetLayout() {
-  curNodes?.forEach(n => {
-    if (n.type !== 'router') { n.fx = null; n.fy = null; }
-  });
+  curNodes?.forEach(n => { n.fx = null; n.fy = null; });
   localStorage.removeItem(LAYOUT_KEY);
   simulation?.alpha(0.6).restart();
   toast('Layout zurückgesetzt');

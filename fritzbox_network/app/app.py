@@ -95,10 +95,14 @@ def _fetch_hostlist_xml(fc) -> dict:
             ap_mac  = _norm_mac(item.findtext("X_AVM-DE_AssociatedDeviceMAC") or "")
             port_s  = (item.findtext("X_AVM-DE_Port") or "0").strip()
             speed_s = (item.findtext("X_AVM-DE_Speed") or "").strip()
+            freq_s   = (item.findtext("X_AVM-DE_Frequency") or "").strip()
+            sig_s    = (item.findtext("X_AVM-DE_SignalStrength") or "").strip()
             out[mac] = {
-                "ap_mac": ap_mac,
-                "port":   int(port_s) if port_s.isdigit() else 0,
-                "speed":  int(speed_s) if speed_s.isdigit() else None,
+                "ap_mac":    ap_mac,
+                "port":      int(port_s) if port_s.isdigit() else 0,
+                "speed":     int(speed_s) if speed_s.isdigit() else None,
+                "signal":    int(sig_s)  if sig_s.isdigit()  else None,
+                "frequency": int(freq_s) if freq_s.isdigit() else None,
             }
     except Exception as exc:
         log.warning("HostList-XML nicht verfügbar: %s", exc)
@@ -325,6 +329,20 @@ def _fetch_fresh() -> dict:
                         })
                         if mac:
                             mac_to_id[mac] = node_id
+
+    # ── Enrich nodes with signal / frequency / ap_name from hostlist ──────
+    for n in nodes:
+        mac = n.get("mac", "")
+        info = hostlist_info.get(mac, {}) if mac else {}
+        n["signal"]    = info.get("signal")     # 0-100 or None
+        n["frequency"] = info.get("frequency")  # 2400 / 5000 / None
+        ap_mac_val = info.get("ap_mac", "")
+        if ap_mac_val and ap_mac_val in mac_to_id:
+            ap_nid = mac_to_id[ap_mac_val]
+            ap_node = next((x for x in nodes if x["id"] == ap_nid), None)
+            n["ap_name"] = ap_node["name"] if ap_node else ""
+        else:
+            n["ap_name"] = ""
 
     # ── Smart flat links ───────────────────────────────────────────────────
     # Built AFTER slave promotion so repeaters are already identified.
