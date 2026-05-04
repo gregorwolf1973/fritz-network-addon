@@ -660,19 +660,33 @@ function applySettingsToUI() {
    Segmented controls
    ────────────────────────────────────────────────────────────────── */
 function setTopo(mode) {
+  if (topoMode === mode) return;
   topoMode = mode;
   document.querySelectorAll('[data-topo]').forEach(b =>
     b.classList.toggle('active', b.dataset.topo === mode));
   saveSettings();
-  if (graphData) renderGraph(graphData);
+  // Melt in-memory pins so the new topology actually re-flows.
+  // Saved positions in localStorage are kept; they re-apply on next reload.
+  if (curNodes) curNodes.forEach(n => { if (n.type !== 'router') { n.fx = null; n.fy = null; } });
+  if (graphData) renderGraphFresh(graphData);
 }
 
 function setDir(mode) {
+  if (dirMode === mode) return;
   dirMode = mode;
   document.querySelectorAll('[data-dir]').forEach(b =>
     b.classList.toggle('active', b.dataset.dir === mode));
   saveSettings();
-  if (graphData) renderGraph(graphData);
+  if (curNodes) curNodes.forEach(n => { if (n.type !== 'router') { n.fx = null; n.fy = null; } });
+  if (graphData) renderGraphFresh(graphData);
+}
+
+// Render that ignores saved pins this once (used by mode switches).
+let _ignorePinsOnce = false;
+function renderGraphFresh(data) {
+  _ignorePinsOnce = true;
+  renderGraph(data);
+  _ignorePinsOnce = false;
 }
 
 /* ──────────────────────────────────────────────────────────────────
@@ -790,7 +804,7 @@ function renderGraph(data) {
   // Deep copy + restore previous positions for smooth animation.
   // Saved layout (localStorage) takes precedence over in-memory prevPos
   // and is applied as fx/fy so nodes are pinned where the user put them.
-  const savedLayout = loadSavedLayout();
+  const savedLayout = _ignorePinsOnce ? {} : loadSavedLayout();
   curNodes = visNodes.map(n => {
     const saved = savedLayout[n.id];
     const x = saved?.x ?? prevPos[n.id]?.x ?? W/2 + (Math.random()-0.5)*80;
@@ -937,7 +951,7 @@ function renderGraph(data) {
    ────────────────────────────────────────────────────────────────── */
 function applyForceLayout(W, H, tick) {
   // Unfix all except root – BUT keep saved-layout pins intact.
-  const savedLayout = loadSavedLayout();
+  const savedLayout = _ignorePinsOnce ? {} : loadSavedLayout();
   curNodes.forEach(n => {
     if (n.type === 'router') return;
     const sp = savedLayout[n.id];

@@ -53,17 +53,26 @@ def _fetch_mesh_json(fc) -> dict | None:
     Call X_AVM-DE_GetMeshListPath, then fetch the returned URL.
     The URL already contains a session-ID for auth.
     """
-    try:
-        result = fc.call_action("Hosts1", "X_AVM-DE_GetMeshListPath")
-        path   = result.get("NewX_AVM-DE_MeshListPath", "")
-        if not path:
-            return None
-        url = f"http://{FRITZ_HOST}:{FRITZ_PORT}{path}"
-        with urllib.request.urlopen(url, timeout=8) as resp:
-            return json.loads(resp.read().decode())
-    except Exception as exc:
-        log.warning("Mesh-JSON nicht verfügbar: %s", exc)
-        return None
+    last_exc = None
+    for attempt in range(3):
+        try:
+            result = fc.call_action("Hosts1", "X_AVM-DE_GetMeshListPath")
+            path   = result.get("NewX_AVM-DE_MeshListPath", "")
+            if not path:
+                time.sleep(0.4)
+                continue
+            url = f"http://{FRITZ_HOST}:{FRITZ_PORT}{path}"
+            with urllib.request.urlopen(url, timeout=10) as resp:
+                data = json.loads(resp.read().decode())
+            if data and data.get("nodes"):
+                return data
+            time.sleep(0.4)
+        except Exception as exc:
+            last_exc = exc
+            time.sleep(0.4)
+    if last_exc:
+        log.warning("Mesh-JSON nicht verfügbar: %s", last_exc)
+    return None
 
 
 def _fetch_hostlist_xml(fc) -> dict:
@@ -421,21 +430,36 @@ def _fetch_fresh() -> dict:
                     port_to_switch[p] = n["id"]
     sole_switch_id = switch_ids[0] if len(switch_ids) == 1 else None
 
+    # Build mesh first so we can use it as the primary topology source.
+    mesh_links, has_mesh = _build_mesh_links(mesh_json, mac_to_id)
+
+    # mesh-derived child→parent map (most reliable: AVM's own topology view)
+    mesh_parent: dict[str, str] = {}
+    for ml in mesh_links:
+        s = ml.get("source"); t = ml.get("target")
+        if s and t and s != t and t not in mesh_parent:
+            mesh_parent[t] = s
+
     flat_links: list[dict] = []
     for n in nodes[1:]:
         parent_id = "fritzbox_root"
         mac = n.get("mac", "")
-        if mac:
+
+        # Priority 1: AVM mesh JSON parent (deterministic, matches FritzBox UI)
+        if n["id"] in mesh_parent:
+            parent_id = mesh_parent[n["id"]]
+        elif mac:
             info   = hostlist_info.get(mac, {})
             ap_mac = info.get("ap_mac", "")
             port   = info.get("port", 0)
-            if ap_mac and ap_mac in mac_to_id:
-                # WiFi: connect to the AP/repeater it's associated with
+            freq   = info.get("frequency") or 0
+            # Priority 2: WiFi association (only if frequency confirms WiFi)
+            if ap_mac and ap_mac in mac_to_id and freq > 0:
                 ap_id = mac_to_id[ap_mac]
-                if ap_id != n["id"]:                      # avoid self-loop
+                if ap_id != n["id"]:
                     parent_id = ap_id
             elif n["type"] == "lan":
-                # Pure LAN device → try port-match first, else sole-switch fallback
+                # Priority 3: same FritzBox port as a known switch node
                 if port > 0 and port in port_to_switch and port_to_switch[port] != n["id"]:
                     parent_id = port_to_switch[port]
                 elif sole_switch_id and sole_switch_id != n["id"]:
@@ -449,18 +473,12 @@ def _fetch_fresh() -> dict:
             "speed_tx":  None,
         })
 
-    # Make sure the switch itself is connected to fritzbox_root, never to itself
-    # or to one of its own children — its own flat_link entry already does that
-    # because n["type"] == "switch" doesn't match any of the if/elif branches.
-
-    mesh_links, has_mesh = _build_mesh_links(mesh_json, mac_to_id)
-
     return {
         "nodes":      nodes,
         "links":      flat_links,   # star/smart topology
         "mesh_links": mesh_links,   # real mesh topology
         "has_mesh":   has_mesh,
-        "_hostlist_ok": bool(hostlist_info),
+        "_hostlist_ok": bool(hostlist_info) and has_mesh,
     }
 
 
