@@ -514,6 +514,20 @@ a.dlink:hover { text-decoration: underline; }
         <span class="toggle-knob"></span>
       </label>
     </div>
+    <div class="toggle-row">
+      <span>Geschwindigkeit anzeigen</span>
+      <label class="toggle on" id="tog-speed">
+        <input type="checkbox" checked onchange="onToggle('speed', this)">
+        <span class="toggle-knob"></span>
+      </label>
+    </div>
+    <div class="toggle-row">
+      <span>WLAN-Verbindungen zeigen</span>
+      <label class="toggle on" id="tog-wifi">
+        <input type="checkbox" checked onchange="onToggle('wifi', this)">
+        <span class="toggle-knob"></span>
+      </label>
+    </div>
   </div>
 
   <div class="sb-section">
@@ -604,6 +618,8 @@ const DEFAULT_SETTINGS = {
   showNames: true,
   showIPs:   false,
   showInact: true,
+  showSpeed: true,
+  showWifi:  true,
 };
 function loadSettings() {
   try {
@@ -613,11 +629,11 @@ function loadSettings() {
 }
 function saveSettings() {
   localStorage.setItem(SETTINGS_KEY, JSON.stringify({
-    topoMode, dirMode, showNames, showIPs, showInact,
+    topoMode, dirMode, showNames, showIPs, showInact, showSpeed, showWifi,
   }));
 }
 
-let { topoMode, dirMode, showNames, showIPs, showInact } = loadSettings();
+let { topoMode, dirMode, showNames, showIPs, showInact, showSpeed, showWifi } = loadSettings();
 
 /* ──────────────────────────────────────────────────────────────────
    Theme  (persisted via localStorage)
@@ -654,6 +670,8 @@ function applySettingsToUI() {
   setToggle('tog-names',    showNames);
   setToggle('tog-ips',      showIPs);
   setToggle('tog-inactive', showInact);
+  setToggle('tog-speed',    showSpeed);
+  setToggle('tog-wifi',     showWifi);
 }
 
 /* ──────────────────────────────────────────────────────────────────
@@ -697,7 +715,27 @@ function onToggle(key, el) {
   if (key === 'names')   { showNames = el.checked; d3.selectAll('.lbl-name').attr('display', showNames ? null : 'none'); }
   if (key === 'ips')     { showIPs   = el.checked; d3.selectAll('.lbl-ip').attr('display',   showIPs   ? null : 'none'); }
   if (key === 'inactive'){ showInact = el.checked; if (graphData) renderGraph(graphData); }
+  if (key === 'speed')   { showSpeed = el.checked; applyLinkVisibility(); }
+  if (key === 'wifi')    { showWifi  = el.checked; applyLinkVisibility(); }
   saveSettings();
+}
+
+/* Apply showSpeed / showWifi to existing link + label elements without re-render */
+function isWifiLink(d) {
+  // WiFi if link type says so, or if target node is associated via WiFi (frequency > 0)
+  const lt = (d.link_type || '').toUpperCase();
+  if (lt.includes('WLAN') || lt.includes('WIFI')) return true;
+  const tgt = (typeof d.target === 'object') ? d.target : curNodes?.find(n => n.id === d.target);
+  return !!(tgt && tgt.frequency && tgt.frequency > 0);
+}
+function applyLinkVisibility() {
+  d3.selectAll('line.link').attr('display', d =>
+    (!showWifi && isWifiLink(d)) ? 'none' : null);
+  d3.selectAll('text.link-lbl').attr('display', d => {
+    if (!showSpeed) return 'none';
+    if (!showWifi && isWifiLink(d)) return 'none';
+    return null;
+  });
 }
 
 /* ──────────────────────────────────────────────────────────────────
@@ -858,9 +896,8 @@ function renderGraph(data) {
       return (s?.type === 'router' || s?.type === 'repeater') ? 2 : 1.5;
     });
 
-  /* ── Link speed labels (mesh + tree mode) ── */
-  const showLinkLabels = useMesh;
-  const linkLblSel = gLinks.selectAll('text.link-lbl').data(showLinkLabels ? curLinks : []).join('text')
+  /* ── Link speed labels (always built; visibility via showSpeed toggle) ── */
+  const linkLblSel = gLinks.selectAll('text.link-lbl').data(curLinks.filter(l => !l._fallback)).join('text')
     .attr('class', 'link-lbl')
     .attr('text-anchor', 'middle');
 
@@ -927,14 +964,14 @@ function renderGraph(data) {
     linkSel
       .attr('x1', d => d.source.x).attr('y1', d => d.source.y)
       .attr('x2', d => d.target.x).attr('y2', d => d.target.y);
-    if (showLinkLabels) {
-      linkLblSel
-        .attr('x', d => ((d.source.x + d.target.x)/2))
-        .attr('y', d => ((d.source.y + d.target.y)/2) - 4)
-        .text(d => d.speed_rx ? `${d.speed_rx} Mbit/s` : '');
-    }
+    linkLblSel
+      .attr('x', d => ((d.source.x + d.target.x)/2))
+      .attr('y', d => ((d.source.y + d.target.y)/2) - 4)
+      .text(d => d.speed_rx ? `${d.speed_rx} Mbit/s` : '');
     nodeSel.attr('transform', d => `translate(${d.x},${d.y})`);
   }
+  // Apply current speed/wifi visibility settings to the freshly drawn elements
+  applyLinkVisibility();
 
   /* ── Choose layout ── */
   if (simulation) simulation.stop();
@@ -1089,10 +1126,7 @@ function openModal(d) {
     rows.push({ k:'IP-Adresse', raw:true,
       v:`<a class="dlink" href="http://${esc(d.ip)}" target="_blank" rel="noopener">${esc(d.ip)}</a>` });
 
-  rows.push({ k:'Hostname', raw:true,
-    v: d.name
-      ? `<a class="dlink" href="smb://${esc(d.name)}" target="_blank" rel="noopener">${esc(d.name)}</a>`
-      : '—' });
+  rows.push({ k:'Hostname', v: d.name || '—' });
 
   if (d.mac) {
     rows.push({ k:'MAC-Adresse', v:d.mac });
@@ -1141,10 +1175,6 @@ function openModal(d) {
         <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/>
         <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
       </svg>Web-Oberfläche</a>`);
-    acts.push(`<a class="act-btn" href="smb://${esc(d.ip)}" target="_blank" rel="noopener">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-      </svg>SMB-Freigabe</a>`);
   }
   document.getElementById('m-actions').innerHTML = acts.join('');
   document.getElementById('modal').classList.add('open');
