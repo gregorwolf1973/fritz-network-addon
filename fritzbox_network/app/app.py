@@ -440,30 +440,48 @@ def _fetch_fresh() -> dict:
         if s and t and s != t and t not in mesh_parent:
             mesh_parent[t] = s
 
+    switch_id_set = set(switch_ids)
+
+    def _heuristic_parent(node):
+        """Find a non-router parent from host-list info (switch or AP)."""
+        mac = node.get("mac", "")
+        if not mac:
+            return None
+        info   = hostlist_info.get(mac, {})
+        ap_mac = info.get("ap_mac", "")
+        port   = info.get("port", 0)
+        freq   = info.get("frequency") or 0
+        # WiFi association (only when frequency confirms WiFi)
+        if ap_mac and ap_mac in mac_to_id and freq > 0:
+            ap_id = mac_to_id[ap_mac]
+            if ap_id != node["id"]:
+                return ap_id
+        # LAN: same FritzBox port as a known switch
+        if node["type"] == "lan":
+            if port > 0 and port in port_to_switch and port_to_switch[port] != node["id"]:
+                return port_to_switch[port]
+            if sole_switch_id and sole_switch_id != node["id"]:
+                return sole_switch_id
+        return None
+
     flat_links: list[dict] = []
     for n in nodes[1:]:
-        parent_id = "fritzbox_root"
-        mac = n.get("mac", "")
+        mesh_p      = mesh_parent.get(n["id"])
+        heuristic_p = _heuristic_parent(n)
 
-        # Priority 1: AVM mesh JSON parent (deterministic, matches FritzBox UI)
-        if n["id"] in mesh_parent:
-            parent_id = mesh_parent[n["id"]]
-        elif mac:
-            info   = hostlist_info.get(mac, {})
-            ap_mac = info.get("ap_mac", "")
-            port   = info.get("port", 0)
-            freq   = info.get("frequency") or 0
-            # Priority 2: WiFi association (only if frequency confirms WiFi)
-            if ap_mac and ap_mac in mac_to_id and freq > 0:
-                ap_id = mac_to_id[ap_mac]
-                if ap_id != n["id"]:
-                    parent_id = ap_id
-            elif n["type"] == "lan":
-                # Priority 3: same FritzBox port as a known switch node
-                if port > 0 and port in port_to_switch and port_to_switch[port] != n["id"]:
-                    parent_id = port_to_switch[port]
-                elif sole_switch_id and sole_switch_id != n["id"]:
-                    parent_id = sole_switch_id
+        # Selection logic — stable across mesh-JSON inconsistencies:
+        # * If mesh gives a non-router parent (switch/repeater) → use it.
+        # * Else if heuristic finds a switch/AP → use that (mesh may have
+        #   collapsed the switch hop because the switch is L2-transparent).
+        # * Else trust mesh's router fallback, finally fritzbox_root.
+        if mesh_p and mesh_p != "fritzbox_root":
+            parent_id = mesh_p
+        elif heuristic_p:
+            parent_id = heuristic_p
+        elif mesh_p:
+            parent_id = mesh_p
+        else:
+            parent_id = "fritzbox_root"
 
         flat_links.append({
             "source":    parent_id,
