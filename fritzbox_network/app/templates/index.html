@@ -855,15 +855,25 @@ function renderGraph(data) {
   const nodeSel = gNodes.selectAll('g.node').data(curNodes).join('g')
     .attr('class', d => `node ${d.active ? 'active' : 'inactive'}`)
     .call(d3.drag()
-      .on('start', (e,d) => { if(!e.active) simulation?.alphaTarget(.3).restart(); d.fx=d.x; d.fy=d.y; })
-      .on('drag',  (e,d) => { d.fx=e.x; d.fy=e.y; updatePositions(); })
+      .on('start', (e,d) => { d._dragMoved = false; if(!e.active) simulation?.alphaTarget(.3).restart(); d.fx=d.x; d.fy=d.y; })
+      .on('drag',  (e,d) => { d._dragMoved = true; d.fx=e.x; d.fy=e.y; updatePositions(); })
       .on('end',   (e,d) => {
         if(!e.active) simulation?.alphaTarget(0);
-        saveNodePosition(d);          // auto-persist position after drag
+        if (d._dragMoved) {
+          // Keep node pinned where the user dropped it
+          d.fx = d.x; d.fy = d.y;
+          saveNodePosition(d);
+        }
       }))
-    .on('click',   (ev,d) => { ev.stopPropagation(); openModal(d); })
+    .on('click',   (ev,d) => {
+      ev.stopPropagation();
+      // Debounce: wait briefly so a dblclick can cancel the single-click action
+      if (d._clickTimer) { clearTimeout(d._clickTimer); d._clickTimer = null; return; }
+      d._clickTimer = setTimeout(() => { d._clickTimer = null; openModal(d); }, 260);
+    })
     .on('dblclick',(ev,d) => {
       ev.stopPropagation();
+      if (d._clickTimer) { clearTimeout(d._clickTimer); d._clickTimer = null; }
       d.fx = null; d.fy = null;
       removeNodePosition(d.id);       // unpin → forget saved position
       simulation?.alpha(0.3).restart();
@@ -1193,7 +1203,11 @@ function writeSavedLayout(map) {
 function saveNodePosition(d) {
   if (!d) return;
   const map = loadSavedLayout();
-  map[d.id] = { x: d.x, y: d.y };
+  // Use fx/fy if pinned, otherwise current x/y
+  const x = (d.fx != null) ? d.fx : d.x;
+  const y = (d.fy != null) ? d.fy : d.y;
+  if (x == null || y == null) return;
+  map[d.id] = { x, y };
   writeSavedLayout(map);
 }
 function removeNodePosition(id) {

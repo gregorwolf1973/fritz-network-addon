@@ -81,16 +81,32 @@ def _fetch_hostlist_xml(fc) -> dict:
     switch node are physically behind that switch.
     """
     out: dict = {}
+    last_exc = None
+    # Retry up to 3× — first call after addon start sometimes returns empty/partial
+    for attempt in range(3):
+        try:
+            r    = fc.call_action("Hosts1", "X_AVM-DE_GetHostListPath")
+            path = r.get("NewX_AVM-DE_HostListPath", "")
+            if not path:
+                time.sleep(0.4)
+                continue
+            url = f"http://{FRITZ_HOST}:{FRITZ_PORT}{path}"
+            with urllib.request.urlopen(url, timeout=12) as resp:
+                xml_bytes = resp.read()
+            root_el = ET.fromstring(xml_bytes)
+            items = root_el.findall("Item")
+            if not items:
+                time.sleep(0.4)
+                continue
+            break
+        except Exception as exc:
+            last_exc = exc
+            time.sleep(0.4)
+    else:
+        log.warning("HostList-XML nicht verfügbar: %s", last_exc)
+        return out
     try:
-        r    = fc.call_action("Hosts1", "X_AVM-DE_GetHostListPath")
-        path = r.get("NewX_AVM-DE_HostListPath", "")
-        if not path:
-            return out
-        url = f"http://{FRITZ_HOST}:{FRITZ_PORT}{path}"
-        with urllib.request.urlopen(url, timeout=10) as resp:
-            xml_bytes = resp.read()
-        root_el = ET.fromstring(xml_bytes)
-        for item in root_el.findall("Item"):
+        for item in items:
             mac = _norm_mac(item.findtext("MACAddress") or "")
             if not mac:
                 continue
@@ -444,6 +460,7 @@ def _fetch_fresh() -> dict:
         "links":      flat_links,   # star/smart topology
         "mesh_links": mesh_links,   # real mesh topology
         "has_mesh":   has_mesh,
+        "_hostlist_ok": bool(hostlist_info),
     }
 
 
@@ -453,7 +470,9 @@ def get_network_data(force: bool = False) -> dict:
     if not force and _cache["data"] and (now - _cache["ts"]) < CACHE_TTL:
         return _cache["data"]
     data = _fetch_fresh()
-    if not data.get("error"):
+    # Only cache when result is complete (no error AND hostlist returned data).
+    # Without hostlist, LAN devices can't be routed to switches → topology incomplete.
+    if not data.get("error") and data.get("_hostlist_ok"):
         _cache = {"data": data, "ts": now}
     return data
 
