@@ -1,32 +1,60 @@
 # FritzBox Network Visualizer
 
-Zeigt alle Netzwerkteilnehmer deiner FritzBox als interaktiven Kraft-Graphen.
+Visualize every device on your FritzBox home network as an interactive
+force-directed graph.
 
-## Konfiguration
+## Configuration
 
-| Option | Beschreibung | Standard |
-|--------|-------------|---------|
-| `fritzbox_host` | IP-Adresse der FritzBox | `192.168.178.1` |
-| `fritzbox_port` | TR-064 Port | `49000` |
-| `fritzbox_user` | FritzBox Benutzername (leer = kein Login) | `` |
-| `fritzbox_password` | FritzBox Passwort | `` |
-| `web_port` | Webserver Port | `8300` |
-| `cache_ttl` | Cache-Dauer in Sekunden | `30` |
+| Option              | Description                                              | Default           |
+|---------------------|----------------------------------------------------------|-------------------|
+| `fritzbox_host`     | IP address of your FritzBox                              | `192.168.178.1`   |
+| `fritzbox_port`     | TR-064 port                                              | `49000`           |
+| `fritzbox_user`     | FritzBox username (empty = anonymous, works on some models) | _empty_        |
+| `fritzbox_password` | FritzBox password                                        | _empty_           |
+| `web_port`          | Internal web server port (only exposed via Ingress)      | `8300`            |
+| `cache_ttl`         | Seconds before the topology is re-fetched from FritzBox  | `30`              |
 
-## FritzBox einrichten
+## FritzBox setup
 
-1. FritzBox Benutzeroberfläche öffnen → **System** → **FRITZ!Box-Benutzer**
-2. Benutzer mit Berechtigung **Heimnetz** anlegen (oder vorhandenen nutzen)
-3. Unter **Heimnetz** → **Netzwerk** → **DNS-Rebind-Schutz** den TR-064 Zugriff prüfen
-4. Alternativ: ohne Login mit leerem Benutzernamen (funktioniert bei manchen FritzBox-Modellen)
+1. Open the FritzBox UI → **System → FRITZ!Box users**
+2. Create (or reuse) a user with **Home Network** permission
+3. Enter the credentials in the add-on configuration
 
-## Funktionen
+If TR-064 from the local network is allowed without authentication on
+your model, you can leave user and password empty.
 
-- **Rot**: FritzBox / Router
-- **Blau**: LAN-Geräte und Switches
-- **Orange**: WLAN-Geräte
-- Namen und IP-Adressen ein-/ausblenden
-- Inaktive Geräte ausblenden
-- Klick auf Gerät → Detailansicht mit IP-Link und SMB-Link
-- Zoom und Pan im Graphen
-- Helles / dunkles Design
+## Node legend
+
+- **Red (F)** – Router / FritzBox master
+- **Purple (R)** – Repeater / mesh slave
+- **Blue (S / L)** – Switch / wired LAN device
+- **Orange (W)** – Wi-Fi device
+
+## Display toggles
+
+- **Show names** – device hostnames under each node
+- **Show IPs** – IP address under each node
+- **Show inactive** – include offline devices
+- **Show speed** – link speed label on each connection
+- **Show Wi-Fi connections** – hide all links to Wi-Fi clients for a
+  cleaner wired-only view
+
+## Topology and layout
+
+- **Flat topology** – every device on one hop from its parent (router,
+  switch or AP). The add-on uses the FritzBox mesh JSON first, then
+  falls back to port-matching for switch-attached LAN devices.
+- **Mesh topology** – exact AVM mesh view (good for diagnosing repeater
+  uplinks and channel allocations).
+- **Force layout** – physics-based spring layout, free to rearrange.
+- **Tree layout** – top-down hierarchy with the router on top.
+
+## Interaction
+
+- **Click** a node → detail modal with IP, MAC, vendor, signal, speed,
+  band, AP attachment
+- **Drag** a node → it stays pinned where you drop it; the position is
+  saved in the browser
+- **Double-click** a node → unpin and let it float again
+- **Save layout** → persist all current positions
+- **Reset layout** → clear all pinned positions and re-flow the graph

@@ -1,56 +1,94 @@
-# FritzBox Network Visualizer – Home Assistant Addon
+# FritzBox Network Visualizer – Home Assistant Add-on
 
-Zeigt alle Netzwerkteilnehmer deiner FritzBox als interaktiven Kraft-Graphen direkt in Home Assistant.
+[!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://buymeacoffee.com/gregorwolf1973)
+
+Visualize every device on your FritzBox home network as an interactive
+force-directed graph — right inside Home Assistant. Router, repeaters,
+switches, LAN clients and Wi-Fi clients are discovered automatically over
+TR-064 and the FritzBox Mesh API, then rendered as a live, zoomable map.
+
+![Topology preview](https://raw.githubusercontent.com/gregorwolf1973/fritz-network-addon/main/.github/preview.png)
 
 ## Features
 
-- **Interaktiver Netzwerkgraph** mit D3.js Force-Simulation
-- **Farbkodierung**: Rot = Router/FritzBox · Blau = LAN/Switch · Orange = WLAN
-- Namen und IP-Adressen per Toggle ein-/ausblenden
-- Inaktive Geräte ausblenden
-- Klick auf Gerät → Detailansicht mit Verbindungsgeschwindigkeit, IP, MAC
-- IP anklicken → Web-Oberfläche des Geräts öffnen
-- Hostname anklicken → SMB-Freigabe öffnen
-- Zoom, Pan und Drag im Graphen
-- Helles und dunkles Design
-- Automatisches Caching (konfigurierbar)
+- **Interactive force graph** (D3.js) — drag, zoom, pan, pin nodes
+- **Two topology modes**: flat star or real AVM mesh
+- **Two layout modes**: force simulation or top-down tree
+- **Color-coded node types**: red = router · purple = repeater · blue = LAN/switch · orange = Wi-Fi
+- **Smart parent detection** for LAN devices behind unmanaged switches
+- **Mesh-to-mesh links** between FritzBox and repeaters with real speeds
+- **Per-device detail modal**: IP, MAC, vendor lookup, signal strength, link speed, band (2.4/5 GHz), AP attachment
+- **Toggles** for names, IPs, inactive devices, link speed labels and Wi-Fi connection lines
+- **Layout persistence** — drag a node, it stays put across reloads
+- **Settings persistence** — every toggle and mode survives a reload
+- **Light & dark theme**
+- **Server-side vendor proxy** so MAC lookups work behind the HA Ingress CSP
 
-## Installation
+## One-click installation
 
-1. Home Assistant → **Einstellungen** → **Add-ons** → **Add-on Store**
-2. Oben rechts auf die drei Punkte → **Repositories**
-3. URL hinzufügen: `https://github.com/gregorwolf1973/fritz-network-addon`
-4. Addon **FritzBox Network** installieren und konfigurieren
+[![Add to Home Assistant](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fgregorwolf1973%2Ffritz-network-addon)
 
-## Konfiguration
+Click the button → repository is added to Home Assistant → install
+**FritzBox Network** from the Add-on Store → Start.
+
+### Manual installation
+
+1. In Home Assistant: **Settings → Add-ons → Add-on Store**
+2. Top right **⋮ → Repositories**
+3. Enter this URL:
+   ```
+   https://github.com/gregorwolf1973/fritz-network-addon
+   ```
+4. **FritzBox Network** appears in the store → Install → Start
+5. Open the side panel **FritzBox Network**
+
+## Configuration
 
 ```yaml
-fritzbox_host: "192.168.178.1"
-fritzbox_port: 49000
-fritzbox_user: ""
-fritzbox_password: "dein-passwort"
-web_port: 8300
-cache_ttl: 30
+fritzbox_host: "192.168.178.1"  # IP of your FritzBox
+fritzbox_port: 49000            # TR-064 port (default)
+fritzbox_user: ""               # FritzBox user with "Home Network" permission
+fritzbox_password: ""           # password
+web_port: 8300                  # web UI port (only exposed via Ingress)
+cache_ttl: 30                   # seconds before the topology is re-fetched
 ```
 
-## FritzBox einrichten
+### Creating a FritzBox user
 
-Unter **System → FRITZ!Box-Benutzer** einen Benutzer mit Berechtigung **Heimnetz** anlegen
-und die Zugangsdaten in der Addon-Konfiguration eintragen.
+1. Open the FritzBox UI → **System → FRITZ!Box users**
+2. Add a user with permission **Home Network** (or reuse an existing one)
+3. Put the credentials into the add-on configuration
 
-## Screenshot
+Leaving user/password empty works on some FritzBox models that allow
+anonymous TR-064 access on the local network.
 
-```
-[Sidebar]          [Force-Graph]
-Namen ✓            ●──(F)──●
-IPs   ○                    |
-                   ●───────●
-Legende:
-● Router
-● LAN
-● WLAN
-```
+## How the topology is built
 
-## Lizenz
+The add-on combines three FritzBox data sources for the most accurate view:
+
+1. **TR-064 host list** — every known device with IP, MAC, online state
+2. **`X_AVM-DE_GetHostListPath` XML** — port number, Wi-Fi association
+   (`AssociatedDeviceMAC`), link speed, signal, frequency band
+3. **`X_AVM-DE_GetMeshListPath` JSON** — the FritzBox's own mesh view
+   with repeater and switch links
+
+For LAN devices, the AVM mesh sometimes drops the switch hop (a passive
+switch is L2-transparent). The add-on detects this and routes those
+clients through the matching switch via port number, so the diagram
+keeps matching reality across refreshes.
+
+## Documentation
+
+See [`fritzbox_network/DOCS.md`](fritzbox_network/DOCS.md) for the
+in-depth configuration reference shown inside Home Assistant.
+
+## Support
+
+If this add-on saves you time or makes your home network make sense,
+consider buying me a coffee:
+
+[!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://buymeacoffee.com/gregorwolf1973)
+
+## License
 
 MIT
