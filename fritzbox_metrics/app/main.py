@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""Collects metrics from FritzBox + Home Assistant and writes them to InfluxDB 2.x."""
+"""Collects metrics from FritzBox + Home Assistant and writes to InfluxDB 1.x."""
 import logging
 import os
 import signal
 import sys
 import time
 
-from influxdb_client import InfluxDBClient
-from influxdb_client.client.write_api import SYNCHRONOUS
+from influxdb import InfluxDBClient
+from influxdb.exceptions import InfluxDBClientError
 
 from fritzbox import FritzCollector
 from homeassistant import HACollector
@@ -19,26 +19,37 @@ logging.basicConfig(
 )
 log = logging.getLogger("exporter")
 
-INFLUX_URL = os.environ.get("INFLUXDB_URL", "http://a0d7b954-influxdb:8086")
-INFLUX_TOKEN = os.environ.get("INFLUXDB_TOKEN", "")
-INFLUX_ORG = os.environ.get("INFLUXDB_ORG", "homeassistant")
-INFLUX_BUCKET = os.environ.get("INFLUXDB_BUCKET", "metrics")
+HOST = os.environ.get("INFLUXDB_HOST", "a0d7b954-influxdb")
+PORT = int(os.environ.get("INFLUXDB_PORT", "8086"))
+DB = os.environ.get("INFLUXDB_DATABASE", "metrics")
+USER = os.environ.get("INFLUXDB_USERNAME", "") or None
+PASS = os.environ.get("INFLUXDB_PASSWORD", "") or None
 
 INTERVAL = int(os.environ.get("SCRAPE_INTERVAL", "15"))
 ENABLE_FRITZ = os.environ.get("ENABLE_FRITZBOX", "true").lower() == "true"
 ENABLE_HA = os.environ.get("ENABLE_HOMEASSISTANT", "true").lower() == "true"
 
 
+def _ensure_database(client: InfluxDBClient):
+    try:
+        dbs = {d["name"] for d in client.get_list_database()}
+        if DB not in dbs:
+            log.info("Creating database '%s'", DB)
+            client.create_database(DB)
+        client.switch_database(DB)
+    except InfluxDBClientError as exc:
+        # Most likely insufficient privileges — log and continue, write may still work
+        log.warning("Could not list/create database: %s", exc)
+        client.switch_database(DB)
+
+
 def run():
-    log.info("Exporter starting — interval=%ds  bucket=%s", INTERVAL, INFLUX_BUCKET)
+    log.info("Exporter starting — InfluxDB %s:%s db=%s interval=%ds",
+             HOST, PORT, DB, INTERVAL)
     log.info("Sources — fritzbox=%s  homeassistant=%s", ENABLE_FRITZ, ENABLE_HA)
 
-    if not INFLUX_TOKEN:
-        log.error("INFLUXDB_TOKEN is empty — set it in the addon options")
-        sys.exit(1)
-
-    client = InfluxDBClient(url=INFLUX_URL, token=INFLUX_TOKEN, org=INFLUX_ORG)
-    write_api = client.write_api(write_options=SYNCHRONOUS)
+    client = InfluxDBClient(host=HOST, port=PORT, username=USER, password=PASS, timeout=10)
+    _ensure_database(client)
 
     fritz = FritzCollector() if ENABLE_FRITZ else None
     ha = HACollector() if ENABLE_HA else None
@@ -69,7 +80,7 @@ def run():
 
         if batch:
             try:
-                write_api.write(bucket=INFLUX_BUCKET, org=INFLUX_ORG, record=batch)
+                client.write_points(batch, database=DB)
                 log.info("Wrote %d points to InfluxDB", len(batch))
             except Exception as exc:
                 log.error("InfluxDB write failed: %s", exc)

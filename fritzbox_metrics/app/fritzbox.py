@@ -1,14 +1,17 @@
-"""FritzBox metrics collector via TR-064. Returns InfluxDB Points."""
+"""FritzBox metrics collector via TR-064. Returns InfluxDB 1.x point dicts."""
 import logging
 import os
-from typing import List
-from influxdb_client import Point
+from typing import List, Dict, Any
 from fritzconnection import FritzConnection
 from fritzconnection.lib.fritzstatus import FritzStatus
 from fritzconnection.lib.fritzhosts import FritzHosts
 from fritzconnection.lib.fritzwlan import FritzWLAN
 
 log = logging.getLogger("fritzbox")
+
+
+def _point(measurement: str, tags: Dict[str, str], fields: Dict[str, Any]) -> Dict[str, Any]:
+    return {"measurement": measurement, "tags": tags, "fields": fields}
 
 
 class FritzCollector:
@@ -32,7 +35,7 @@ class FritzCollector:
         self._status = FritzStatus(fc=self._fc)
         self._hosts = FritzHosts(fc=self._fc)
 
-    def collect(self) -> List[Point]:
+    def collect(self) -> List[Dict[str, Any]]:
         try:
             self._connect()
         except Exception as exc:
@@ -40,61 +43,60 @@ class FritzCollector:
             self._fc = None
             return []
 
-        points: List[Point] = []
-        points.extend(self._status_points())
-        points.extend(self._host_points())
-        points.extend(self._wlan_points())
-        return points
+        out: List[Dict[str, Any]] = []
+        out.extend(self._status_points())
+        out.extend(self._host_points())
+        out.extend(self._wlan_points())
+        return out
 
-    def _status_points(self) -> List[Point]:
-        out: List[Point] = []
+    def _status_points(self):
+        out = []
         try:
             s = self._status
-            p = (Point("fritzbox_wan")
-                 .tag("host", self.host)
-                 .field("uptime_seconds", int(s.uptime))
-                 .field("connected", 1 if s.is_connected else 0)
-                 .field("link_up", 1 if s.is_linked else 0)
-                 .field("downstream_max_bps", int(s.max_bit_rate[0]))
-                 .field("upstream_max_bps", int(s.max_bit_rate[1]))
-                 .field("downstream_current_bps", int(s.transmission_rate[1] * 8))
-                 .field("upstream_current_bps", int(s.transmission_rate[0] * 8))
-                 .field("bytes_sent_total", int(s.bytes_sent))
-                 .field("bytes_received_total", int(s.bytes_received)))
+            fields = {
+                "uptime_seconds": int(s.uptime),
+                "connected": 1 if s.is_connected else 0,
+                "link_up": 1 if s.is_linked else 0,
+                "downstream_max_bps": int(s.max_bit_rate[0]),
+                "upstream_max_bps": int(s.max_bit_rate[1]),
+                "downstream_current_bps": int(s.transmission_rate[1] * 8),
+                "upstream_current_bps": int(s.transmission_rate[0] * 8),
+                "bytes_sent_total": int(s.bytes_sent),
+                "bytes_received_total": int(s.bytes_received),
+            }
             try:
-                p.field("external_ip", str(s.external_ip or "unknown"))
+                fields["external_ip"] = str(s.external_ip or "unknown")
             except Exception:
                 pass
-            out.append(p)
+            out.append(_point("fritzbox_wan", {"host": self.host}, fields))
         except Exception as exc:
             log.warning("FritzBox status error: %s", exc)
         return out
 
-    def _host_points(self) -> List[Point]:
-        out: List[Point] = []
+    def _host_points(self):
+        out = []
         try:
             hosts = self._hosts.get_hosts_info()
             total = len(hosts)
             active = sum(1 for h in hosts if h.get("status"))
-            out.append(Point("fritzbox_hosts")
-                       .tag("host", self.host)
-                       .field("total", total)
-                       .field("active", active))
+            out.append(_point("fritzbox_hosts", {"host": self.host},
+                              {"total": total, "active": active}))
         except Exception as exc:
             log.warning("FritzBox hosts error: %s", exc)
         return out
 
-    def _wlan_points(self) -> List[Point]:
-        out: List[Point] = []
+    def _wlan_points(self):
+        out = []
         band_map = {1: "2.4GHz", 2: "5GHz", 3: "5GHz-2", 4: "guest"}
         for idx, band in band_map.items():
             try:
                 wlan = FritzWLAN(fc=self._fc, service=idx)
-                out.append(Point("fritzbox_wlan")
-                           .tag("host", self.host)
-                           .tag("band", band)
-                           .field("clients", int(wlan.host_number))
-                           .field("enabled", 1 if wlan.is_enabled else 0))
+                out.append(_point(
+                    "fritzbox_wlan",
+                    {"host": self.host, "band": band},
+                    {"clients": int(wlan.host_number),
+                     "enabled": 1 if wlan.is_enabled else 0},
+                ))
             except Exception:
                 pass
         return out

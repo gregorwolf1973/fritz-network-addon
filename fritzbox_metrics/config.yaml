@@ -1,6 +1,6 @@
 name: "FritzBox & HA Metrics Exporter"
-description: "Pushes FritzBox (TR-064) and Home Assistant metrics to InfluxDB 2.x"
-version: "0.2.0"
+description: "Pushes FritzBox (TR-064) and Home Assistant metrics to InfluxDB 1.x"
+version: "0.3.0"
 url: "https://github.com/gregorwolf1973/fritz-network-addon"
 slug: "fritzbox_metrics"
 init: false
@@ -19,10 +19,11 @@ options:
   fritzbox_port: 49000
   fritzbox_user: ""
   fritzbox_password: ""
-  influxdb_url: "http://a0d7b954-influxdb:8086"
-  influxdb_token: ""
-  influxdb_org: "homeassistant"
-  influxdb_bucket: "metrics"
+  influxdb_host: "a0d7b954-influxdb"
+  influxdb_port: 8086
+  influxdb_database: "metrics"
+  influxdb_username: ""
+  influxdb_password: ""
   scrape_interval: 15
   enable_fritzbox: true
   enable_homeassistant: true
@@ -32,10 +33,11 @@ schema:
   fritzbox_port: port
   fritzbox_user: str
   fritzbox_password: str
-  influxdb_url: str
-  influxdb_token: str
-  influxdb_org: str
-  influxdb_bucket: str
+  influxdb_host: str
+  influxdb_port: port
+  influxdb_database: str
+  influxdb_username: str
+  influxdb_password: str
   scrape_interval: int(5,3600)
   enable_fritzbox: bool
   enable_homeassistant: bool
