@@ -1,6 +1,6 @@
 name: "FritzBox & HA Metrics Exporter"
 description: "Prometheus exporter for FritzBox (TR-064) and Home Assistant Supervisor metrics"
-version: "0.1.0"
+version: "0.1.1"
 url: "https://github.com/gregorwolf1973/fritz-network-addon"
 slug: "fritzbox_metrics"
 init: false
@@ -12,6 +12,7 @@ startup: application
 boot: auto
 host_network: true
 hassio_api: true
+hassio_role: manager
 homeassistant_api: true
 ports:
   9709/tcp: 9709
