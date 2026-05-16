@@ -1,21 +1,13 @@
 #!/usr/bin/env python3
-"""Prometheus exporter for FritzBox + Home Assistant.
-
-Exposes metrics on :METRICS_PORT/metrics  (default 9709).
-Add this as a scrape target in the HA Prometheus add-on:
-
-  scrape_configs:
-    - job_name: fritzbox_ha
-      static_configs:
-        - targets: ['<HA-IP>:9709']
-"""
+"""Collects metrics from FritzBox + Home Assistant and writes them to InfluxDB 2.x."""
 import logging
 import os
 import signal
 import sys
 import time
 
-from prometheus_client import start_http_server, Gauge
+from influxdb_client import InfluxDBClient
+from influxdb_client.client.write_api import SYNCHRONOUS
 
 from fritzbox import FritzCollector
 from homeassistant import HACollector
@@ -27,53 +19,60 @@ logging.basicConfig(
 )
 log = logging.getLogger("exporter")
 
-PORT = int(os.environ.get("METRICS_PORT", "9709"))
+INFLUX_URL = os.environ.get("INFLUXDB_URL", "http://a0d7b954-influxdb:8086")
+INFLUX_TOKEN = os.environ.get("INFLUXDB_TOKEN", "")
+INFLUX_ORG = os.environ.get("INFLUXDB_ORG", "homeassistant")
+INFLUX_BUCKET = os.environ.get("INFLUXDB_BUCKET", "metrics")
+
 INTERVAL = int(os.environ.get("SCRAPE_INTERVAL", "15"))
 ENABLE_FRITZ = os.environ.get("ENABLE_FRITZBOX", "true").lower() == "true"
 ENABLE_HA = os.environ.get("ENABLE_HOMEASSISTANT", "true").lower() == "true"
 
-g_last_scrape = Gauge("exporter_last_scrape_timestamp", "Unix ts of last scrape", ["source"])
-g_scrape_duration = Gauge("exporter_scrape_duration_seconds", "Scrape duration", ["source"])
-
 
 def run():
-    log.info("Exporter starting on :%d (interval=%ds)", PORT, INTERVAL)
+    log.info("Exporter starting — interval=%ds  bucket=%s", INTERVAL, INFLUX_BUCKET)
     log.info("Sources — fritzbox=%s  homeassistant=%s", ENABLE_FRITZ, ENABLE_HA)
 
-    start_http_server(PORT)
+    if not INFLUX_TOKEN:
+        log.error("INFLUXDB_TOKEN is empty — set it in the addon options")
+        sys.exit(1)
+
+    client = InfluxDBClient(url=INFLUX_URL, token=INFLUX_TOKEN, org=INFLUX_ORG)
+    write_api = client.write_api(write_options=SYNCHRONOUS)
 
     fritz = FritzCollector() if ENABLE_FRITZ else None
     ha = HACollector() if ENABLE_HA else None
 
     def _shutdown(*_):
         log.info("Shutting down.")
+        try:
+            client.close()
+        except Exception:
+            pass
         sys.exit(0)
 
     signal.signal(signal.SIGTERM, _shutdown)
     signal.signal(signal.SIGINT, _shutdown)
 
     while True:
-        if fritz:
+        batch = []
+        for src, c in (("fritzbox", fritz), ("homeassistant", ha)):
+            if not c:
+                continue
             t0 = time.time()
             try:
-                fritz.collect()
+                pts = c.collect()
+                batch.extend(pts)
+                log.debug("%s: %d points in %.2fs", src, len(pts), time.time() - t0)
             except Exception as exc:
-                log.exception("FritzBox collect failed: %s", exc)
-            dur = time.time() - t0
-            g_last_scrape.labels(source="fritzbox").set(time.time())
-            g_scrape_duration.labels(source="fritzbox").set(dur)
-            log.debug("FritzBox scrape done in %.2fs", dur)
+                log.exception("%s collect failed: %s", src, exc)
 
-        if ha:
-            t0 = time.time()
+        if batch:
             try:
-                ha.collect()
+                write_api.write(bucket=INFLUX_BUCKET, org=INFLUX_ORG, record=batch)
+                log.info("Wrote %d points to InfluxDB", len(batch))
             except Exception as exc:
-                log.exception("HA collect failed: %s", exc)
-            dur = time.time() - t0
-            g_last_scrape.labels(source="homeassistant").set(time.time())
-            g_scrape_duration.labels(source="homeassistant").set(dur)
-            log.debug("HA scrape done in %.2fs", dur)
+                log.error("InfluxDB write failed: %s", exc)
 
         time.sleep(INTERVAL)
 

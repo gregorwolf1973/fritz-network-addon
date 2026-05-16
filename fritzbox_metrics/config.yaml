@@ -1,6 +1,6 @@
 name: "FritzBox & HA Metrics Exporter"
-description: "Prometheus exporter for FritzBox (TR-064) and Home Assistant Supervisor metrics"
-version: "0.1.1"
+description: "Pushes FritzBox (TR-064) and Home Assistant metrics to InfluxDB 2.x"
+version: "0.2.0"
 url: "https://github.com/gregorwolf1973/fritz-network-addon"
 slug: "fritzbox_metrics"
 init: false
@@ -14,16 +14,15 @@ host_network: true
 hassio_api: true
 hassio_role: manager
 homeassistant_api: true
-ports:
-  9709/tcp: 9709
-ports_description:
-  9709/tcp: "Prometheus metrics endpoint (/metrics)"
 options:
   fritzbox_host: "192.168.178.1"
   fritzbox_port: 49000
   fritzbox_user: ""
   fritzbox_password: ""
-  metrics_port: 9709
+  influxdb_url: "http://a0d7b954-influxdb:8086"
+  influxdb_token: ""
+  influxdb_org: "homeassistant"
+  influxdb_bucket: "metrics"
   scrape_interval: 15
   enable_fritzbox: true
   enable_homeassistant: true
@@ -33,7 +32,10 @@ schema:
   fritzbox_port: port
   fritzbox_user: str
   fritzbox_password: str
-  metrics_port: port
+  influxdb_url: str
+  influxdb_token: str
+  influxdb_org: str
+  influxdb_bucket: str
   scrape_interval: int(5,3600)
   enable_fritzbox: bool
   enable_homeassistant: bool
