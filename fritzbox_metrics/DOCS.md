@@ -1,7 +1,11 @@
 # FritzBox & HA Metrics Exporter
 
+[!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://buymeacoffee.com/gregorwolf1973)
+
 Collects metrics from **FritzBox** (TR-064) and **Home Assistant**
 (Supervisor + Core API) and **pushes them to InfluxDB 1.x** every N seconds.
+
+> 📖 Full README with troubleshooting & screenshots: [English](README.md) · [Deutsch](README.de.md)
 
 Designed for the official **InfluxDB** community add-on
 (`hassio-addons/addon-influxdb`, ships **InfluxDB 1.7** with Chronograf
