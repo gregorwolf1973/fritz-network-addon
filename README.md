@@ -1,3 +1,14 @@
+# FritzBox Home Assistant Add-ons
+
+This repository ships **two** Home Assistant add-ons:
+
+| Add-on | Purpose |
+|---|---|
+| **FritzBox Network** | Live force-directed topology graph of your FritzBox home network |
+| **FritzBox & HA Metrics Exporter** | Prometheus exporter for FritzBox + Home Assistant — pair with the Prometheus & Grafana add-ons for Netdata-style dashboards. See [`fritzbox_metrics/DOCS.md`](fritzbox_metrics/DOCS.md). |
+
+---
+
 # FritzBox Network Visualizer – Home Assistant Add-on
 
 [!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://buymeacoffee.com/gregorwolf1973)
