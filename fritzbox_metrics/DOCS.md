@@ -49,6 +49,14 @@ Add **InfluxDB** as data source (InfluxQL flavor, NOT Flux for 1.x):
 - User / Password: as created above
 - HTTP Method: `GET`
 
+### 5. Import the ready-made dashboard
+
+A starter dashboard lives at [`grafana/dashboard.json`](grafana/dashboard.json).
+
+In Grafana: **Dashboards → New → Import → Upload JSON file** → pick `dashboard.json` → select your InfluxDB datasource → **Import**.
+
+It includes panels for WAN throughput, WAN bytes counters, WLAN clients per band, host/active counts, HA Core CPU/RAM/network, host disk gauge, entities by domain & state, and addon counts.
+
 ## Measurements
 
 | Measurement | Fields | Tags |
