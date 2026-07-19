@@ -23,6 +23,7 @@ CACHE_TTL  = int(os.environ.get("CACHE_TTL", "30"))
 WEB_PORT   = int(os.environ.get("WEB_PORT", "8300"))
 
 _cache: dict = {"data": None, "ts": 0.0}
+_vendor_cache: dict = {}   # OUI (first 3 octets) → vendor string
 
 
 # ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -542,11 +543,17 @@ def api_vendor():
     mac = request.args.get("mac", "").strip()
     if not mac:
         return jsonify({"vendor": ""})
+    # Vendor is determined by the OUI (first 3 octets), so cache by OUI to
+    # maximise hits and stay under the free macvendors.com rate limit.
+    oui = _norm_mac(mac)[:8]
+    if oui in _vendor_cache:
+        return jsonify({"vendor": _vendor_cache[oui]})
     try:
         url = f"https://api.macvendors.com/{urllib.parse.quote(mac)}"
         req = urllib.request.Request(url, headers={"Accept": "text/plain"})
         with urllib.request.urlopen(req, timeout=5) as resp:
             vendor = resp.read().decode().strip()
+        _vendor_cache[oui] = vendor
         return jsonify({"vendor": vendor})
     except Exception:
         return jsonify({"vendor": ""})
