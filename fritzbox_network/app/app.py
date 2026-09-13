@@ -4,6 +4,7 @@ import os
 import time
 import json
 import logging
+import socket
 import urllib.request
 import urllib.parse
 import xml.etree.ElementTree as ET
@@ -574,5 +575,26 @@ def api_status():
     })
 
 
+def _install_safe_getfqdn():
+    """Make the reverse DNS lookup during bind survive a broken hostname.
+
+    With host_network the addon sees the router's DNS. A PTR record that is not
+    valid UTF-8 makes http.server's socket.getfqdn() raise UnicodeDecodeError
+    while binding, which killed the addon before it could serve anything.
+    """
+    real_getfqdn = socket.getfqdn
+
+    def safe_getfqdn(name=""):
+        try:
+            return real_getfqdn(name)
+        except (UnicodeDecodeError, UnicodeError, OSError):
+            log.warning("Reverse DNS lookup for %r failed – using the plain address", name)
+            return name or "localhost"
+
+    socket.getfqdn = safe_getfqdn
+
+
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=WEB_PORT, debug=False)
+    _install_safe_getfqdn()
+    log.info("Serving on 0.0.0.0:%s", WEB_PORT)
+    app.run(host="0.0.0.0", port=WEB_PORT, debug=False, threaded=True)
