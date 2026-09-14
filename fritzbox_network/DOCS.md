@@ -1,5 +1,7 @@
 # FritzBox Network Visualizer
 
+[!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://buymeacoffee.com/gregorwolf1973)
+
 Visualize every device on your FritzBox home network as an interactive
 force-directed graph.
 

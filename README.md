@@ -16,7 +16,7 @@ Interactive **force-directed topology graph** of every device on your FritzBox h
 
 **InfluxDB exporter** for FritzBox (TR-064) and Home Assistant (Supervisor + Core API). Pair with the official **InfluxDB** and **Grafana** community add-ons for live, Netdata-style dashboards — no Prometheus, no cloud.
 
-Ships with a **ready-made Grafana dashboard** (17 panels, one-click import).
+Ships with a **ready-made Grafana dashboard** (20 panels, one-click import).
 
 📖 Docs: [English](./fritzbox_metrics/README.md) · [Deutsch](./fritzbox_metrics/README.de.md)
 

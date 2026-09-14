@@ -17,7 +17,7 @@ ohne Cloud, ohne Prometheus.
 - **FritzBox-Metriken** über TR-064 — Uptime, WAN-Status, Down-/Upstream-Rate, DSL-Max, Byte-Zähler, externe IP, Hosts gesamt + aktiv, WLAN-Clients pro Band (2,4 GHz / 5 GHz / Gast)
 - **Home-Assistant-Metriken** über Supervisor + Core API — HA-Core CPU/RAM/Netz, Host CPU/RAM, Disk-Auslastung, Entity-Zahlen pro Domain & pro Status, Addon-Anzahl
 - **InfluxDB-1.x-Push** — funktioniert out-of-the-box mit dem offiziellen `hassio-addons/addon-influxdb` (InfluxDB 1.7 + Chronograf)
-- **Fertiges Grafana-Dashboard** dabei — 17 Panels in 5 Reihen, ein Klick zum Importieren
+- **Fertiges Grafana-Dashboard** dabei — 20 Panels in 5 Reihen, ein Klick zum Importieren
 - **Scrape-Intervall** konfigurierbar (Default: 15 s)
 - **Quellen einzeln abschaltbar** — FritzBox oder HA-Collector deaktivieren
 - **Database wird automatisch angelegt** beim ersten Start (sofern der User die Rechte hat)

@@ -16,7 +16,7 @@ for live, Netdata-style dashboards — fully self-hosted, no cloud, no Prometheu
 - **FritzBox metrics** via TR-064 — uptime, WAN state, downstream/upstream rate, DSL max, byte counters, external IP, total + active host count, WLAN clients per band (2.4 GHz / 5 GHz / Guest)
 - **Home Assistant metrics** via Supervisor + Core API — HA Core CPU/RAM/network, host CPU/RAM, disk usage, entity counts per domain & per state, addon count
 - **InfluxDB 1.x push** — works out of the box with the official `hassio-addons/addon-influxdb` (InfluxDB 1.7 + Chronograf)
-- **Ready-made Grafana dashboard** included — 17 panels in 5 rows, one-click import
+- **Ready-made Grafana dashboard** included — 20 panels in 5 rows, one-click import
 - **Configurable scrape interval** (default 15 s)
 - **Selective sources** — disable FritzBox or HA collector individually
 - **Auto-creates** the InfluxDB database on first run (if user has permission)
