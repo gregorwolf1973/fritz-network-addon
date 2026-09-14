@@ -30,13 +30,13 @@ TR-064 and the FritzBox Mesh API, then rendered as a live, zoomable map.
 
 [![Add to Home Assistant](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fgregorwolf1973%2Ffritz-network-addon)
 
-Click the button → repository is added to Home Assistant → install **FritzBox Network** from the Add-on Store → Start.
+Click the button → repository is added to Home Assistant → install **FritzBox Network** from the app list → Start.
 
 Or manually:
-1. In Home Assistant: **Settings → Add-ons → Add-on Store**
+1. In Home Assistant: **Settings → Apps → Install app**
 2. Top right **⋮ → Repositories**
 3. Enter URL: `https://github.com/gregorwolf1973/fritz-network-addon`
-4. **FritzBox Network** appears in the store → Install → Start
+4. **FritzBox Network** appears in the app list → Install → Start
 5. Open the side panel **FritzBox Network**
 
 ## Configuration
@@ -46,9 +46,14 @@ fritzbox_host: "192.168.178.1"  # IP of your FritzBox
 fritzbox_port: 49000            # TR-064 port (default)
 fritzbox_user: ""               # FritzBox user with "Home Network" permission
 fritzbox_password: ""           # password
-web_port: 8300                  # web UI port (only exposed via Ingress)
+web_port: 8300                  # web UI port, keep 8300 (see note)
 cache_ttl: 30                   # seconds before the topology is re-fetched
 ```
+
+> **`web_port`:** the add-on uses `host_network: true`, so the web UI is also
+> reachable directly at `http://<ha-ip>:<web_port>`, not only through Ingress.
+> The Ingress panel always uses the fixed `ingress_port: 8300` – changing
+> `web_port` breaks the sidebar panel.
 
 ### Creating a FritzBox user
 

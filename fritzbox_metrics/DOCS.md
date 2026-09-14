@@ -67,7 +67,7 @@ It includes panels for WAN throughput, WAN bytes counters, WLAN clients per band
 |---|---|---|
 | `fritzbox_wan` | uptime_seconds, connected, link_up, downstream_max_bps, upstream_max_bps, downstream_current_bps, upstream_current_bps, bytes_sent_total, bytes_received_total, external_ip | host |
 | `fritzbox_hosts` | total, active | host |
-| `fritzbox_wlan` | clients, enabled | host, band |
+| `fritzbox_wlan` | clients, enabled | host, band (`2.4GHz`, `5GHz`, `5GHz-2`, `guest`) |
 | `ha_core` | running, cpu_percent, memory_percent, memory_bytes, network_rx, network_tx | version |
 | `ha_host` | cpu_percent, memory_used_bytes, memory_total_bytes, disk_total_gb, disk_used_gb, disk_free_gb | — |
 | `ha_entities` | total | — |

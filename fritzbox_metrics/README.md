@@ -13,7 +13,7 @@ for live, Netdata-style dashboards — fully self-hosted, no cloud, no Prometheu
 
 ## Features
 
-- **FritzBox metrics** via TR-064 — uptime, WAN state, downstream/upstream rate, DSL max, byte counters, external IP, total + active host count, WLAN clients per band (2.4 GHz / 5 GHz / Guest)
+- **FritzBox metrics** via TR-064 — uptime, WAN state, downstream/upstream rate, DSL max, byte counters, external IP, total + active host count, WLAN clients per band (2.4 GHz / 5 GHz / second 5 GHz band `5GHz-2` on tri-band models / Guest)
 - **Home Assistant metrics** via Supervisor + Core API — HA Core CPU/RAM/network, host CPU/RAM, disk usage, entity counts per domain & per state, addon count
 - **InfluxDB 1.x push** — works out of the box with the official `hassio-addons/addon-influxdb` (InfluxDB 1.7 + Chronograf)
 - **Ready-made Grafana dashboard** included — 20 panels in 5 rows, one-click import
@@ -31,16 +31,16 @@ for live, Netdata-style dashboards — fully self-hosted, no cloud, no Prometheu
 Click the button → repository is automatically added → continue with step 4.
 
 Or manually:
-1. In Home Assistant: **Settings → Add-ons → Add-on Store**
+1. In Home Assistant: **Settings → Apps → Install app**
 2. Top right **⋮ → Repositories**
 3. Enter URL: `https://github.com/gregorwolf1973/fritz-network-addon`
-4. **FritzBox & HA Metrics Exporter** appears in the store → **Install**
+4. **FritzBox & HA Metrics Exporter** appears in the app list → **Install**
 5. Configure (see below) → **Start**
 
 ### Method 2: Local add-on
 
 1. Copy the `fritzbox_metrics/` folder to `/addons/` via SSH or Samba
-2. **Settings → Add-ons → Add-on Store → ⋮ → Reload local add-ons**
+2. **Settings → Apps → Install app → ⋮ → Reload local add-ons**
 3. **FritzBox & HA Metrics Exporter** under "Local add-ons" → **Install** → **Start**
 
 ## Quick Start
@@ -112,7 +112,7 @@ Start → logs should show `Wrote N points to InfluxDB` every 15 seconds.
 |---|---|---|
 | `fritzbox_wan` | uptime_seconds, connected, link_up, downstream_max_bps, upstream_max_bps, downstream_current_bps, upstream_current_bps, bytes_sent_total, bytes_received_total, external_ip | host |
 | `fritzbox_hosts` | total, active | host |
-| `fritzbox_wlan` | clients, enabled | host, band |
+| `fritzbox_wlan` | clients, enabled | host, band (`2.4GHz`, `5GHz`, `5GHz-2`, `guest`) |
 | `ha_core` | running, cpu_percent, memory_percent, memory_bytes, network_rx, network_tx | version |
 | `ha_host` | cpu_percent, memory_used_bytes, memory_total_bytes, disk_total_gb, disk_used_gb, disk_free_gb | — |
 | `ha_entities` | total | — |

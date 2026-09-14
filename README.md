@@ -26,16 +26,16 @@ Ships with a **ready-made Grafana dashboard** (20 panels, one-click import).
 
 [![Add to Home Assistant](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fgregorwolf1973%2Ffritz-network-addon)
 
-Click the button → repository is automatically added to Home Assistant → install either add-on from the Add-on Store → Start.
+Click the button → repository is automatically added to Home Assistant → install either add-on from the app list → Start.
 
 Or manually:
-1. In Home Assistant: **Settings → Add-ons → Add-on Store**
+1. In Home Assistant: **Settings → Apps → Install app**
 2. Top right **⋮ → Repositories**
 3. Enter this URL:
    ```
    https://github.com/gregorwolf1973/fritz-network-addon
    ```
-4. The add-ons appear in the store → Install the ones you want → Start
+4. The add-ons appear in the app list → Install the ones you want → Start
 
 ## Support
 

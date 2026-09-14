@@ -13,8 +13,15 @@ force-directed graph.
 | `fritzbox_port`     | TR-064 port                                              | `49000`           |
 | `fritzbox_user`     | FritzBox username (empty = anonymous, works on some models) | _empty_        |
 | `fritzbox_password` | FritzBox password                                        | _empty_           |
-| `web_port`          | Internal web server port (only exposed via Ingress)      | `8300`            |
+| `web_port`          | Port of the web server. **Leave at `8300`** – see note below | `8300`         |
 | `cache_ttl`         | Seconds before the topology is re-fetched from FritzBox  | `30`              |
+
+> **Note on `web_port`:** the add-on runs with `host_network: true`, so the web
+> server is reachable directly on the Home Assistant host at
+> `http://<ha-ip>:<web_port>` – it is *not* limited to Ingress. The Ingress
+> panel, however, always talks to the fixed `ingress_port: 8300`. Changing
+> `web_port` therefore breaks the sidebar panel; only change it if port 8300 is
+> already taken on the host, and then use the direct URL instead of the panel.
 
 ## FritzBox setup
 
