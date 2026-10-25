@@ -1,6 +1,6 @@
 # FritzBox & HA Metrics Exporter
 
-[!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://buymeacoffee.com/gregorwolf1973)
+[!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://buymeacoffee.com/gregorwolf1973) [![Donate using Liberapay](https://liberapay.com/assets/widgets/donate.svg)](https://liberapay.com/Gregor_Wolf/donate)
 
 Collects metrics from **FritzBox** (TR-064) and **Home Assistant**
 (Supervisor + Core API) and **pushes them to InfluxDB 1.x** every N seconds.
