@@ -1,6 +1,7 @@
 name: "FritzBox & HA Metrics Exporter"
 description: "Pushes FritzBox (TR-064) and Home Assistant metrics to InfluxDB 1.x"
-version: "0.3.2"
+version: "0.3.3"
+image: ghcr.io/gregorwolf1973/{arch}-addon-fritzbox_metrics
 url: "https://github.com/gregorwolf1973/fritz-network-addon"
 slug: "fritzbox_metrics"
 init: false

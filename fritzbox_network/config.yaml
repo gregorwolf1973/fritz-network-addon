@@ -1,6 +1,7 @@
 name: "FritzBox Network"
-description: "Netzwerk-Topologie-Visualizer für FritzBox – alle Netzwerkteilnehmer als interaktiver Kraft-Graph"
-version: "1.0.21"
+description: "Network topology visualizer for FritzBox - all network devices as an interactive force graph"
+version: "1.0.22"
+image: ghcr.io/gregorwolf1973/{arch}-addon-fritzbox_network
 url: "https://github.com/gregorwolf1973/fritz-network-addon"
 slug: "fritzbox_network"
 init: false
